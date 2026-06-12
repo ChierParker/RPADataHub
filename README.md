@@ -162,63 +162,45 @@ RPADataHub/
 ## 快速开始
 
 ### 环境要求
+- Python 3.10+ / MySQL 8.0+ / Redis (可选)
 
-- Python 3.10+
-- MySQL 8.0+
-- Windows 10/11 (文件监听) 或 Linux (Worker 模式)
+### 1. 密钥配置
+所有密钥统一在 `config/settings.py` 中，支持环境变量覆盖：
 
-### 1. 安装依赖
+| 密钥 | 配置项 | 环境变量 |
+|------|--------|---------|
+| MySQL 密码 | `DatabaseConfig.password` | `RPA_DB_PASSWORD` |
+| DeepSeek Key | `AlertConfig.deepseek_api_key` | `RPA_DEEPSEEK_API_KEY` |
+| Redis 密码 | `RedisConfig.redis_url` | `RPA_REDIS_URL` |
+| Bark Key | `AlertConfig.bark_url` | `RPA_BARK_URL` |
 
+**方式一：环境变量（推荐）**
 ```bash
-pip install -r requirements.txt
-playwright install chromium
+set RPA_DB_PASSWORD=your_password
+set RPA_DEEPSEEK_API_KEY=sk-xxxxxxxx
+set RPA_REDIS_URL=redis://:your_password@localhost:6379
 ```
 
-### 2. 配置数据库
+**方式二：编辑 `config/settings.py`**
+修改对应 `_env()` 的第二个参数（默认值）为你的真实密钥。
 
-编辑 `config/settings.py` 或设置环境变量：
+> 完整清单见 `.env.example`
 
+### 2. 初始化数据库
 ```bash
-# Windows PowerShell
-$env:RPA_DB_HOST = "localhost"
-$env:RPA_DB_PORT = "3306"
-$env:RPA_DB_USER = "root"
-$env:RPA_DB_PASSWORD = "your_password"
-$env:RPA_DB_DATABASE = "data"
-$env:RPA_WATCH_FOLDER = "D:/rpa_output"
-$env:RPA_ARCHIVE_FOLDER = "D:/rpa_archive"
+mysql -u root -p < sql/init_tables.sql
+mysql -u root -p < sql/init_admin_tables.sql
+mysql -u root -p < sql/init_task_tables.sql
 ```
 
-### 3. 初始化数据库
-
+### 3. 启动服务
 ```bash
-mysql -u root -p data < sql/init_tables.sql
-mysql -u root -p data < sql/init_admin_tables.sql
-mysql -u root -p data < sql/init_task_tables.sql
+start_all_services.bat           # Windows 一键启动
+python admin_server.py           # Admin -> http://localhost:5000
+python file_watcher.py           # 文件监听 + ETL
+python worker.py                 # 任务执行 Worker
 ```
-
-### 4. 生成演示数据
-
-```bash
-python generate_mock_data.py
-```
-
-### 5. 启动服务
-
-```bash
-# 终端1: Admin 管理平台
-python admin_server.py
-# 访问 http://localhost:5000
-# 默认账号: admin / YOUR_ADMIN_PASSWORD
-
-# 终端2: 文件监听 + ETL 消费
-python file_watcher.py
-
-# 终端3: 任务执行 Worker (可选)
-python worker.py
-```
-
----
+默认管理员: `admin`，密码在 `sql/init_admin_tables.sql` 中配置。
 
 ## 功能模块
 
@@ -340,7 +322,7 @@ waitress-serve --host=0.0.0.0 --port=5000 admin_server:app
 
 ## 作者
 
-**YourName** — 架构设计、核心开发、全链路实现
+**Jackson** — 架构设计、核心开发、全链路实现
 
 ---
 

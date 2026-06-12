@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `admin_users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO `admin_users` (`username`, `password_hash`, `role`) VALUES
-('admin', '3150ff61bef8d11bb9fd8536dcff293845c011d384a2c72ebfdaab3cc6516709', 'admin');
+('admin', 'SHA256_OF_YOUR_PASSWORD', 'admin');
 
 
 -- 2. 运维监控SQL模板表（v2: 增加负责人）

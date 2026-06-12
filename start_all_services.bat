@@ -2,7 +2,7 @@
 title RPADataHub Services
 cd /d C:\Users\YourUsername\Desktop\RPADataHub
 set PYTHON=C:\Users\YourUsername\AppData\Local\Programs\Python\Python310\python.exe
-set REDIS_URL=redis://:your-redis-password@localhost:6379
+set REDIS_URL=redis://:YOUR_REDIS_PASSWORD@localhost:6379
 
 echo [%date% %time%] Starting RPADataHub...
 echo.
