@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sensitive Data
+.env
+*.key
+*.pem
+amazon_cookies.json
+Login_log/
+
+# Logs
+logs/
+*.log
+
+# Output
+rpa_output/
+rpa_archive/
+rpa_fallback/
+output/
+artifacts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Temp
+_gen_*.py
+_fix_*.py
+_build_*.py
+start_admin_silent.vbs
+*.bak

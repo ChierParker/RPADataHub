@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}BI经营分析 - RPA Admin{% endblock %}
+{% block extra_head %}
+<script src="/static/chart.umd.js"></script>
+<style>
+    .bi-page { background:#f8f9fb; min-height:100vh; }
+    .card-stat { background:#fff; border:none; border-radius:12px; padding:20px 24px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    .card-stat .stat-label { font-size:12px; color:#8896a6; font-weight:500; letter-spacing:.3px; margin-bottom:6px; }
+    .card-stat .stat-value { font-size:28px; font-weight:700; color:#1a202c; line-height:1.1; }
+    .card-stat .stat-change { font-size:12px; margin-top:4px; }
+    .card-stat .stat-change.up { color:#16a34a; }
+    .card-stat .stat-change.down { color:#dc2626; }
+    .card-stat .accent-left { position:absolute; left:0; top:20px; bottom:20px; width:3px; border-radius:0 3px 3px 0; }
+    .card-panel { background:#fff; border:none; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    .card-panel .panel-header { padding:16px 20px; border-bottom:1px solid #f1f5f9; font-size:14px; font-weight:600; color:#334155; }
+    .chart-wrap { position:relative; padding:16px; }
+    .chart-wrap-lg { height:340px; }
+    .chart-wrap-md { height:300px; }
+    .filter-bar { display:flex;gap:10px;align-items:center; }
+    .filter-bar input,.filter-bar select { border:1px solid #e2e8f0;border-radius:8px;padding:7px 12px;font-size:13px;color:#334155;background:#fff;outline:none; }
+    .filter-bar input:focus,.filter-bar select:focus { border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08); }
+    .btn-query { background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 18px;font-size:13px;font-weight:500;cursor:pointer; }
+    .btn-query:hover { background:#1d4ed8; }
+    .tbl-mini { font-size:13px; }
+    .tbl-mini th { color:#8896a6;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #f1f5f9; }
+    .tbl-mini td { color:#334155;border-color:#f8f9fb; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="bi-page">
+
+<!-- 顶部栏 -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 style="font-weight:700;color:#1a202c;margin:0">BI 经营分析</h4>
+        <span style="font-size:13px;color:#8896a6">电商多平台运营数据概览</span>
+    </div>
+    <div class="filter-bar">
+        <input type="date" id="fFrom" onchange="loadBI()">
+        <span style="color:#8896a6;font-size:13px">—</span>
+        <input type="date" id="fTo" onchange="loadBI()">
+        <select id="fPlat" onchange="loadBI()">
+            <option value="">全部平台</option>
+            {% for p in platforms %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+        </select>
+        <button class="btn-query" onclick="loadBI()">查询</button>
+    </div>
+</div>
+
+<!-- KPI 卡片行 -->
+<div class="row g-3 mb-4" id="kpiRow">
+    <div class="col">
+        <div class="card-stat position-relative">
+            <div class="accent-left" style="background:#2563eb"></div>
+            <div class="stat-label">总 GMV</div>
+            <div class="stat-value" id="kGmv">—</div>
+            <div class="stat-change" id="kGmvChg"></div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card-stat position-relative">
+            <div class="accent-left" style="background:#0891b2"></div>
+            <div class="stat-label">总订单</div>
+            <div class="stat-value" id="kOrd">—</div>
+            <div class="stat-change" id="kOrdChg"></div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card-stat position-relative">
+            <div class="accent-left" style="background:#d97706"></div>
+            <div class="stat-label">广告花费</div>
+            <div class="stat-value" id="kAd">—</div>
+            <div class="stat-change" id="kAdChg">ACOS <span id="kAcos">—</span>%</div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card-stat position-relative">
+            <div class="accent-left" style="background:#dc2626"></div>
+            <div class="stat-label">退款率</div>
+            <div class="stat-value" id="kRef">—</div>
+            <div class="stat-change" id="kRefChg"></div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card-stat position-relative">
+            <div class="accent-left" style="background:#16a34a"></div>
+            <div class="stat-label">毛利预估</div>
+            <div class="stat-value" id="kProf">—</div>
+            <div class="stat-change">利润率 <span id="kMargin">—</span>%</div>
+        </div>
+    </div>
+</div>
+
+<!-- 趋势大图 -->
+<div class="card-panel mb-4">
+    <div class="panel-header">日度经营趋势</div>
+    <div class="chart-wrap chart-wrap-lg"><canvas id="trendChart"></canvas></div>
+</div>
+
+<!-- 三列：平台分布 + 费用构成 + 热销 -->
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card-panel h-100">
+            <div class="panel-header">平台 GMV 分布</div>
+            <div class="chart-wrap chart-wrap-md"><canvas id="platChart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-panel h-100">
+            <div class="panel-header">费用构成</div>
+            <div class="chart-wrap chart-wrap-md"><canvas id="feeChart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card-panel h-100">
+            <div class="panel-header">热销商品 TOP10</div>
+            <div class="table-responsive p-3" style="max-height:300px;overflow:auto">
+                <table class="table table-sm tbl-mini mb-0">
+                    <thead><tr><th>商品</th><th>销量</th><th>销售额</th></tr></thead>
+                    <tbody id="topBody"><tr><td colspan="3" class="text-center text-muted py-4">加载中…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let trendChart, platChart, feeChart;
+const BLUE='#2563eb', BLUE_LIGHT='rgba(37,99,235,.12)', BLUE_FILL='rgba(37,99,235,.06)';
+const COLORS=['#2563eb','#0891b2','#d97706','#dc2626','#7c3aed','#059669','#db2777','#ea580c'];
+
+function loadBI(){
+    const qs=new URLSearchParams({date_from:fFrom.value,date_to:fTo.value,platform:fPlat.value});
+    fetch('/api/bi/overview?'+qs)
+        .then(r=>r.json())
+        .then(d=>{
+            if(d.error){['kGmv','kOrd','kAd','kRef','kProf'].forEach(id=>document.getElementById(id).textContent='ERR');return}
+            const k=d.kpi;
+            const fmt=v=>'$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:0});
+            document.getElementById('kGmv').textContent=fmt(k.gmv);
+            document.getElementById('kOrd').textContent=Number(k.orders).toLocaleString();
+            document.getElementById('kAd').textContent=fmt(k.ad_spend);
+            document.getElementById('kAcos').textContent=k.acos;
+            document.getElementById('kRef').textContent=k.refund_rate+'%';
+            const profit=k.gmv-k.ad_spend-k.fees;
+            document.getElementById('kProf').textContent=fmt(profit);
+            document.getElementById('kMargin').textContent=(k.gmv>0?(profit/k.gmv*100).toFixed(1):'0');
+
+            // 趋势图
+            if(trendChart)trendChart.destroy();
+            trendChart=new Chart(document.getElementById('trendChart'),{
+                type:'line',
+                data:{
+                    labels:d.trend.map(x=>x.date),
+                    datasets:[
+                        {label:'GMV',data:d.trend.map(x=>x.revenue),borderColor:BLUE,backgroundColor:BLUE_FILL,fill:true,tension:.3,pointRadius:2,pointHoverRadius:5,borderWidth:2},
+                        {label:'广告花费',data:d.trend.map(x=>x.ad_spend),borderColor:'#d97706',borderDash:[5,3],tension:.3,pointRadius:1,borderWidth:1.5},
+                    ]
+                },
+                options:{
+                    responsive:true,maintainAspectRatio:false,
+                    interaction:{mode:'index',intersect:false},
+                    plugins:{legend:{position:'top',labels:{usePointStyle:true,boxWidth:8,padding:16}}},
+                    scales:{
+                        y:{grid:{color:'#f1f5f9'},ticks:{callback:v=>'$'+v.toLocaleString()}},
+                        x:{grid:{display:false}}
+                    }
+                }
+            });
+
+            // 平台饼图
+            if(platChart)platChart.destroy();
+            if(d.platform_dist.length){
+                platChart=new Chart(document.getElementById('platChart'),{
+                    type:'doughnut',
+                    data:{labels:d.platform_dist.map(x=>x.platform),datasets:[{data:d.platform_dist.map(x=>x.revenue),backgroundColor:COLORS,borderWidth:0}]},
+                    options:{
+                        responsive:true,maintainAspectRatio:false,
+                        plugins:{legend:{position:'bottom',labels:{padding:12,usePointStyle:true,boxWidth:8}}},
+                        onClick:(_,el)=>{if(el.length){fPlat.value=d.platform_dist[el[0].index].platform;loadBI()}}
+                    }
+                });
+            }
+
+            // 费用横向柱状图
+            if(feeChart)feeChart.destroy();
+            if(d.fee_breakdown.length){
+                feeChart=new Chart(document.getElementById('feeChart'),{
+                    type:'bar',
+                    data:{labels:d.fee_breakdown.map(x=>x.fee_type),datasets:[{data:d.fee_breakdown.map(x=>x.total),backgroundColor:'rgba(124,58,237,.7)',borderRadius:4}]},
+                    options:{
+                        responsive:true,maintainAspectRatio:false,indexAxis:'y',
+                        plugins:{legend:{display:false}},
+                        scales:{x:{grid:{color:'#f1f5f9'},ticks:{callback:v=>'$'+v.toLocaleString()}},y:{grid:{display:false}}}
+                    }
+                });
+            }
+
+            // 热销表
+            let th='';
+            d.top_products.forEach((p,i)=>{
+                th+=`<tr><td><span style="color:#8896a6;font-size:11px">${i+1}.</span> ${(p.title||p.asin).substring(0,24)}</td><td>${p.units.toLocaleString()}</td><td style="font-weight:600">$${p.revenue.toLocaleString()}</td></tr>`;
+            });
+            document.getElementById('topBody').innerHTML=th||'<tr><td colspan="3" class="text-center text-muted">暂无</td></tr>';
+        })
+        .catch(e=>{['kGmv','kOrd','kAd','kRef','kProf'].forEach(id=>document.getElementById(id).textContent='ERR')});
+}
+const fFrom=document.getElementById('fFrom'),fTo=document.getElementById('fTo'),fPlat=document.getElementById('fPlat');
+fFrom.value=new Date(Date.now()-30*864e5).toISOString().split('T')[0];
+fTo.value=new Date().toISOString().split('T')[0];
+loadBI();
+</script>
+{% endblock %}

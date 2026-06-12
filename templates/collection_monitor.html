@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}采集任务监控 - RPA Admin{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="mb-0"><i class="bi bi-eye"></i> 采集任务监控</h4><button class="btn btn-outline-secondary btn-sm" onclick="loadTasks"><i class="bi bi-arrow-clockwise"></i> 刷新</button></div>
+<div class="row mb-3">
+  <div class="col-md-3"><div class="card"><div class="card-body text-center"><div class="text-muted small">今日任务</div><h3>{{ stats.total }}</h3></div></div></div>
+  <div class="col-md-3"><div class="card border-start border-success border-3"><div class="card-body text-center"><div class="text-muted small">成功</div><h3 class="text-success">{{ stats.success }}</h3></div></div></div>
+  <div class="col-md-3"><div class="card border-start border-danger border-3"><div class="card-body text-center"><div class="text-muted small">失败</div><h3 class="text-danger">{{ stats.failed }}</h3></div></div></div>
+  <div class="col-md-3"><div class="card border-start border-warning border-3"><div class="card-body text-center"><div class="text-muted small">进行中</div><h3 class="text-warning">{{ stats.running }}</h3></div></div></div>
+</div>
+<div class="card"><div class="card-header fw-bold">任务列表 <small class="text-muted">(点击展开店铺明细)</small></div>
+  <div class="table-responsive" style="max-height:500px;overflow-y:auto"><table class="table table-sm table-hover mb-0"><thead><tr><th>任务名称</th><th>UUID</th><th>状态</th><th>开始时间</th><th>耗时</th><th>成功/失败</th><th>成功率</th><th>错误信息</th></tr></thead><tbody id="taskBody"><tr><td colspan="8" class="text-center text-muted py-3">加载中...</td></tr></tbody></table></div>
+<div class="card-footer d-flex justify-content-between align-items-center"><small class="text-muted" id="taskInfo"></small><div class="d-flex align-items-center gap-2"><select class="form-select form-select-sm" style="width:auto" id="taskPageSize" onchange="loadTasks()"><option value="15">15条/页</option><option value="30">30条/页</option><option value="50">50条/页</option><option value="100">100条/页</option></select><div class="btn-group btn-group-sm" id="taskBtns"></div></div></div>
+</div>
+<div class="card mt-3" id="detailCard" style="display:none"><div class="card-header fw-bold">店铺采集明细 <span id="detailTitle"></span></div><div class="table-responsive" style="max-height:500px;overflow-y:auto"><table class="table table-sm mb-0"><thead><tr><th>店铺</th><th>平台</th><th>结果</th><th>ODS表</th><th>行数</th><th>耗时</th><th>错误</th></tr></thead><tbody id="detailBody"></tbody></table></div></div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+let taskPage=1;
+function loadTasks(p){
+    taskPage=p||taskPage;
+    var pp=document.getElementById('taskPageSize').value||15;
+    fetch('/api/collection/summary?page='+taskPage+'&per_page='+pp).then(r=>r.json()).then(d=>{
+        let h=''; d.records.forEach(r=>{ let b=r.task_status=='SUCCESS'?'success':r.task_status=='FAILED'?'danger':'warning'; h+=`<tr style=\"cursor:pointer\" onclick=\"loadDetail('${r.task_uuid}')\"><td>${r.script_name||''}</td><td><code>${r.task_uuid||''}</code></td><td><span class=\"badge bg-${b}\">${r.task_status}</span></td><td>${r.start_time||'-'}</td><td>${r.duration_sec||0}s</td><td>${r.success_shops||0}/${r.failed_shops||0}</td><td>${r.success_rate||0}%</td><td style=\"max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\" title=\"${r.error_message||''}\">${r.error_message||'-'}</td></tr>`; });
+        document.getElementById('taskBody').innerHTML=h||'<tr><td colspan=\"8\" class=\"text-center text-muted\">暂无</td></tr>';
+        var total=d.total||0, pages=Math.ceil(total/pp), info='共 '+total+' 条';
+        var btns=''; for(var i=Math.max(1,taskPage-2);i<=Math.min(pages,taskPage+2);i++) btns+='<button class=\"btn btn-sm '+(i==taskPage?'btn-dark':'btn-outline-secondary')+'\" onclick=\"loadTasks('+i+')\">'+i+'</button>';
+        document.getElementById('taskInfo').textContent=info; document.getElementById('taskBtns').innerHTML=btns;
+    });
+}
+function loadDetail(uuid){ document.getElementById('detailCard').style.display='block'; document.getElementById('detailTitle').textContent=': '+uuid; fetch('/api/collection/records?task_uuid='+uuid).then(r=>r.json()).then(d=>{ let h=''; d.records.forEach(r=>{ let b=r.collect_result=='SUCCESS'?'success':r.collect_result=='FAILED'?'danger':'secondary'; h+=`<tr><td>${r.shop_name}</td><td>${r.platform}</td><td><span class=\"badge bg-${b}\">${r.collect_result}</span></td><td>${r.ods_table||''}</td><td>${r.row_count}</td><td>${r.duration_sec||0}s</td><td>${r.error_message||'-'}</td></tr>`; }); document.getElementById('detailBody').innerHTML=h||'<tr><td colspan=\"7\" class=\"text-center text-muted\">暂无明细</td></tr>'; }); }
+loadTasks();setInterval(function(){loadTasks()},15000);
+</script>
+{% endblock %}

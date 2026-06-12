@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>注册 - RPA Admin</title>
+<link href="/static/bootstrap.min.css" rel="stylesheet"><link href="/static/bootstrap-icons.css" rel="stylesheet">
+<style>
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#1e293b)}
+    .reg-card{background:#fff;border-radius:20px;padding:40px;width:440px;box-shadow:0 25px 80px rgba(0,0,0,.4)}
+    .reg-card h3{font-weight:700;margin-bottom:4px}.reg-card .sub{color:#94a3b8;font-size:13px;margin-bottom:8px}
+    .step{display:none}.step.active{display:block}
+    .step-indicator{display:flex;justify-content:center;gap:8px;margin-bottom:24px}
+    .step-dot{width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+    .step-dot.active{background:#2563eb;color:#fff}
+    .step-dot.done{background:#22c55e;color:#fff}
+    .method-btn{border:2px solid #e2e8f0;border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;width:100%}
+    .method-btn:hover,.method-btn.selected{border-color:#2563eb;background:#eff6ff}
+    .method-btn .icon{font-size:28px;margin-bottom:6px}
+    .form-control{border-radius:10px;padding:12px 14px;border:1.5px solid #e2e8f0;font-size:14px}
+    .form-control:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .btn-dark{width:100%;padding:12px;border-radius:10px;font-weight:600;background:#111;color:#fff;border:none;margin-top:8px}
+    .btn-dark:hover{background:#333}.login-link{text-align:center;margin-top:16px;font-size:13px;color:#94a3b8}
+</style></head><body>
+<div class="reg-card">
+    <h3>创建账号</h3><p class="sub">注册后默认拥有只读权限，可向管理员申请更多</p>
+    <div class="step-indicator"><div class="step-dot active" id="dot1">1</div><div class="step-dot" id="dot2">2</div><div class="step-dot" id="dot3">3</div></div>
+    {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
+    <!-- Step 1: 选择注册方式 -->
+    <div class="step active" id="step1">
+        <p class="small text-muted mb-3">选择一种方式验证身份</p>
+        <div class="row g-2 mb-3">
+            <div class="col-4"><div class="method-btn selected" onclick="selectMethod('email',this)"><div class="icon">📧</div><small>邮箱</small></div></div>
+            <div class="col-4"><div class="method-btn" onclick="selectMethod('phone',this)"><div class="icon">📱</div><small>手机号</small></div></div>
+            <div class="col-4"><div class="method-btn" onclick="selectMethod('wechat',this)"><div class="icon">💬</div><small>微信</small></div></div>
+        </div>
+        <input type="text" class="form-control mb-2" id="contactInput" placeholder="请输入邮箱地址">
+        <button class="btn-dark" onclick="sendCode()">获取验证码</button>
+        <input type="hidden" id="regMethod" value="email">
+    </div>
+    <!-- Step 2: 验证码 -->
+    <div class="step" id="step2">
+        <p class="small text-muted mb-2">验证码已发送至 <strong id="contactDisplay"></strong></p>
+        <div class="d-flex gap-2 mb-3">
+            <input type="text" class="form-control" id="codeInput" placeholder="6位验证码" maxlength="6">
+        </div>
+        <button class="btn-dark" onclick="verifyCode()">验证</button>
+        <button class="btn btn-outline-secondary w-100 mt-2" onclick="goStep(1)">← 返回</button>
+    </div>
+    <!-- Step 3: 设置密码 -->
+    <div class="step" id="step3">
+        <p class="small text-muted mb-2">设置你的登录信息</p>
+        <input type="text" class="form-control mb-2" id="regUsername" placeholder="用户名">
+        <input type="password" class="form-control mb-3" id="regPassword" placeholder="密码(至少6位)" minlength="6">
+        <div class="d-flex gap-2 mb-1"><small class="text-success">✓ 已验证:</small><small class="text-muted" id="verifiedContact"></small></div>
+        <button class="btn-dark" onclick="doRegister()">完成注册</button>
+    </div>
+    <div class="login-link">已有账号？<a href="/login">登录</a></div>
+</div>
+<script>
+var method='email',step=1,code='';
+function selectMethod(m,el){method=m;document.getElementById('regMethod').value=m;document.querySelectorAll('.method-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');var p=m=='email'?'请输入邮箱地址':m=='phone'?'请输入手机号':'请输入微信号';document.getElementById('contactInput').placeholder=p;}
+function goStep(s){step=s;document.querySelectorAll('.step').forEach(e=>e.classList.remove('active'));document.getElementById('step'+s).classList.add('active');document.querySelectorAll('.step-dot').forEach(e=>e.classList.remove('active'));document.getElementById('dot'+s).classList.add('active');}
+function sendCode(){
+    var v=document.getElementById('contactInput').value.trim();
+    if(!v) return alert('请输入联系方式');
+    code=String(Math.floor(100000+Math.random()*900000));
+    document.getElementById('contactDisplay').textContent=v;
+    alert('验证码(演示模式): '+code);
+    goStep(2);
+}
+function verifyCode(){
+    var input=document.getElementById('codeInput').value.trim();
+    if(input!==code) return alert('验证码错误');
+    document.getElementById('verifiedContact').textContent=document.getElementById('contactInput').value;
+    document.getElementById('dot1').classList.add('done');document.getElementById('dot2').classList.add('done');
+    goStep(3);
+}
+function doRegister(){
+    var u=document.getElementById('regUsername').value.trim(),p=document.getElementById('regPassword').value.trim();
+    if(!u||!p) return alert('用户名和密码不能为空');
+    if(p.length<6) return alert('密码至少6位');
+    var form=document.createElement('form');form.method='POST';form.style.display='none';
+    var contact=document.getElementById('contactInput').value;
+    ['username','password',method].forEach(function(k){
+        var inp=document.createElement('input');inp.name=k;inp.value=k==='username'?u:k==='password'?p:contact;form.appendChild(inp);
+    });
+    document.body.appendChild(form);form.submit();
+}
+</script></body></html>

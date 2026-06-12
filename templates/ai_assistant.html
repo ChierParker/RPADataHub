@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}AI 运营助手 - RPA Admin{% endblock %}
+{% block extra_head %}
+<style>
+    .ai-page { display:flex; gap:16px; height:calc(100vh - 130px); }
+    .ai-chat-panel { flex:1; display:flex; flex-direction:column; min-width:0; }
+    .ai-chat-body { flex:1; overflow-y:auto; overflow-x:hidden; padding:16px; background:#f8f9fb; border-radius:0 0 10px 10px; }
+    .ai-chat-body::-webkit-scrollbar { width:6px; }
+    .ai-chat-body::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+    .ai-msg-user { background:#2563eb; color:#fff; border-radius:14px 14px 4px 14px; padding:8px 14px; max-width:75%; font-size:13px; display:inline-block; margin-bottom:4px; }
+    .ai-msg-bot { background:#fff; border:1px solid #e2e8f0; border-radius:4px 14px 14px 14px; padding:10px 14px; font-size:13px; line-height:1.6; margin-bottom:8px; }
+    .ai-msg-bot .insight { color:#1e40af; font-weight:500; margin-bottom:6px; }
+    .ai-msg-bot .data { background:#f8f9fb; border-radius:6px; padding:8px; font-size:12px; font-family:Consolas,monospace; white-space:pre-wrap; margin-top:8px; }
+    .ai-sidebar { width:300px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; flex-shrink:0; }
+    .ai-sidebar .card { margin:0; }
+    @media(max-width:992px){ .ai-page{flex-direction:column} .ai-sidebar{width:100%;flex-direction:row;flex-wrap:wrap} .ai-sidebar .card{flex:1;min-width:200px} }
+</style>
+{% endblock %}
+{% block content %}
+<div class="ai-page">
+    <!-- 左侧: 聊天 -->
+    <div class="ai-chat-panel">
+        <div class="card-header fw-bold d-flex justify-content-between align-items-center bg-white border rounded-top" style="margin-bottom:-1px">
+            <span><i class="bi bi-robot"></i> AI 运营助手</span>
+            <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('chatBody').innerHTML=document.getElementById('welcomeHTML').innerHTML">新对话</button>
+        </div>
+        <div class="ai-chat-body" id="chatBody">
+            <div id="welcomeHTML">
+                <div class="text-center text-muted py-5">
+                    <div style="font-size:48px">🤖</div>
+                    <h5 class="mt-3">AI 运营助手</h5>
+                    <p class="small">DeepSeek 驱动 · 实时数据 · 智能洞察</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="ask('今天数据采集情况如何')">📊 今日概览</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="ask('最近有哪些异常')">⚠ 异常分析</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="ask('各平台GMV排名')">📈 GMV排名</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="ask('哪个店铺退款最多')">💰 退款分析</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="ask('广告花费最高的店铺')">📢 广告排行</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="ask('任务执行成功率如何')">📋 任务统计</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-white border-top p-2">
+            <div class="input-group">
+                <input type="text" class="form-control" id="chatInput" placeholder="输入问题，AI帮你分析数据..." onkeydown="if(event.key==='Enter')sendMsg()" autofocus>
+                <button class="btn btn-dark" onclick="sendMsg()"><i class="bi bi-send"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧面板 -->
+    <div class="ai-sidebar">
+        <div class="card"><div class="card-header fw-bold small">🤖 AI 能力</div>
+            <div class="card-body py-2" style="font-size:12px">
+                <div class="mb-1">✅ 自然语言查数据库</div>
+                <div class="mb-1">✅ DeepSeek 智能洞察</div>
+                <div class="mb-1">✅ 异常根因分析</div>
+                <div class="mb-1">✅ 平台/店铺数据排行</div>
+                <div class="mb-1">✅ 广告/退款/新闻查询</div>
+            </div>
+        </div>
+        <div class="card"><div class="card-header fw-bold small">💡 试试问这些</div>
+            <div class="list-group list-group-flush" style="font-size:12px">
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('今天采集了多少数据')">今日数据概览</a>
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('最近有哪些异常告警')">最近异常告警</a>
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('各平台GMV排名')">各平台GMV</a>
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('广告花费最高的店铺')">广告花费排行</a>
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('新浪新闻采集了多少条')">新浪采集量</a>
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('过去7天采集趋势')">采集趋势</a>
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('费用构成分析')">费用构成</a>
+                <a class="list-group-item list-group-item-action py-2" href="#" onclick="ask('哪个任务成功率最低')">任务质量</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function ask(msg){ document.getElementById('chatInput').value=msg; sendMsg(); }
+function sendMsg(){
+    var input=document.getElementById('chatInput'), msg=input.value.trim();
+    if(!msg) return;
+    var body=document.getElementById('chatBody');
+    // 清除欢迎语
+    var wel=body.querySelector('#welcomeHTML');
+    if(wel) wel.style.display='none';
+    // 用户消息
+    var uDiv=document.createElement('div'); uDiv.className='text-end mb-3';
+    uDiv.innerHTML='<span class=\"ai-msg-user\">'+msg+'</span>';
+    body.appendChild(uDiv);
+    // 加载中
+    var lDiv=document.createElement('div'); lDiv.className='ai-msg-bot';
+    lDiv.innerHTML='<div class=\"spinner-grow spinner-grow-sm text-secondary me-2\"></div>分析中...';
+    body.appendChild(lDiv);
+    input.value='';
+    fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})})
+        .then(r=>r.json()).then(d=>{
+            var text = d.reply||'暂无数据';
+            // 分离洞察和数据表
+            var parts = text.split('---');
+            var insight = parts[0].trim();
+            var data = parts.length>1 ? parts.slice(1).join('---').trim() : '';
+            lDiv.innerHTML = '<div class=\"insight\">📊 ' + insight + '</div>';
+            if(data) lDiv.innerHTML += '<div class=\"data\">' + data + '</div>';
+            body.scrollTop = body.scrollHeight;
+        }).catch(function(e){
+            lDiv.innerHTML='<span class=\"text-danger\">请求失败: '+e.message+'</span>';
+        });
+}
+</script>
+{% endblock %}

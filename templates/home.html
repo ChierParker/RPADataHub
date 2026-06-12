@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block title %}首页 - RPA Admin{% endblock %}{% block content %}
+<div class="text-center py-5">
+    <div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:inline-flex;align-items:center;justify-content:center;font-size:36px;color:#fff;margin-bottom:20px;box-shadow:0 8px 30px rgba(59,130,246,.3)">R</div>
+    <h3 style="font-weight:700;color:#1a202c">RPADataHub</h3>
+    <p class="text-muted">电商数据采集与智能运维平台</p>
+    <div class="row mt-4 justify-content-center">
+        <div class="col-md-8">
+            <div class="row g-3">
+                <div class="col-md-4"><div class="card border-start border-primary border-3"><div class="card-body text-center py-3"><div class="text-muted small mb-1">采集覆盖</div><h5 class="mb-0">10+ 平台</h5></div></div></div>
+                <div class="col-md-4"><div class="card border-start border-success border-3"><div class="card-body text-center py-3"><div class="text-muted small mb-1">管理店铺</div><h5 class="mb-0">8 个</h5></div></div></div>
+                <div class="col-md-4"><div class="card border-start border-warning border-3"><div class="card-body text-center py-3"><div class="text-muted small mb-1">数据总量</div><h5 class="mb-0">10,000+</h5></div></div></div>
+            </div>
+            <div class="card mt-4"><div class="card-body text-start">
+                <h6 class="fw-bold mb-3">📌 快速导航</h6>
+                <div class="row g-2">
+                    <div class="col-6"><a href="/dashboard" class="btn btn-outline-secondary btn-sm w-100 text-start">📋 ETL执行记录</a></div>
+                    <div class="col-6"><a href="/tasks" class="btn btn-outline-secondary btn-sm w-100 text-start">▶ 任务管理</a></div>
+                    <div class="col-6"><a href="/bi" class="btn btn-outline-secondary btn-sm w-100 text-start">📊 BI经营分析</a></div>
+                    <div class="col-6"><a href="/monitor" class="btn btn-outline-secondary btn-sm w-100 text-start">🛡 SQL巡检</a></div>
+                    <div class="col-6"><a href="/collection/monitor" class="btn btn-outline-secondary btn-sm w-100 text-start">👁 任务监控</a></div>
+                    <div class="col-6"><a href="/ai" class="btn btn-outline-secondary btn-sm w-100 text-start">🤖 AI 助手</a></div>
+                </div>
+            </div></div>
+        </div>
+    </div>
+    <p class="text-muted small mt-4">当前角色: <strong>{{ session.user.role_name }}</strong></p>
+</div>{% endblock %}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(cp \"基于RPA+工程化架构的规模化数据采集与运维实践白皮书.docx\" \"temp_whitepaper.doc\")",
+      "Bash(wsl libreoffice *)"
+    ]
+  }
+}

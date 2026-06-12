@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}任务管理 - RPA Admin{% endblock %}
+{% block content %}
+<h4 class="mb-3"><i class="bi bi-play-circle"></i> 任务管理</h4>
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-bold">任务配置</span>
+    <button class="btn btn-dark btn-sm" onclick="showCfgForm()"><i class="bi bi-plus-lg"></i> 新增任务</button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0"><thead><tr><th>任务名</th><th>脚本</th><th>平台</th><th>店铺</th><th>调度</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>{% for c in configs %}<tr>
+      <td>{{ c.task_name }}</td><td><code>{{ c.script_name }}</code></td><td>{{ c.platform or '-' }}</td><td>{{ c.shop_name or '全部' }}</td>
+      <td>{% if c.schedule_type=='now' %}<span class="badge bg-info">手动</span>{% else %}<span class="badge bg-secondary">{{ c.cron_expression }}</span>{% endif %}</td>
+      <td>{% if c.status %}<span class="badge bg-success">启用</span>{% else %}<span class="badge bg-secondary">停用</span>{% endif %}</td>
+      <td>
+        <button class="btn btn-outline-success btn-sm" onclick="runTask({{ c.id }})" title="立即执行">▶</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="editCfg({{ c|tojson }})"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-outline-danger btn-sm" onclick="delCfg({{ c.id }})"><i class="bi bi-trash"></i></button>
+      </td>
+    </tr>{% else %}<tr><td colspan="7" class="text-center text-muted py-3">暂无任务配置</td></tr>{% endfor %}</tbody></table>
+  </div>
+</div>
+<div class="card"><div class="card-header fw-bold d-flex justify-content-between align-items-center">执行历史 <button class="btn btn-outline-secondary btn-sm" onclick="loadQueue()"><i class="bi bi-arrow-clockwise"></i> 刷新</button></div>
+  <div class="table-responsive" style="max-height:400px;overflow-y:auto"><table class="table table-sm mb-0" id="queueTable"><thead><tr><th>任务名</th><th>UUID</th><th>状态</th><th>耗时</th><th>成功/失败</th><th>时间</th></tr></thead><tbody id="queueBody"><tr><td colspan="6" class="text-center text-muted py-3">加载中...</td></tr></tbody></table></div>
+<div class="card-footer d-flex justify-content-between align-items-center"><small class="text-muted" id="queueInfo"></small><div class="d-flex align-items-center gap-2"><select class="form-select form-select-sm" style="width:auto" id="queuePageSize" onchange="loadQueue(1)"><option value="15">15条/页</option><option value="30">30条/页</option><option value="50">50条/页</option><option value="100">100条/页</option></select><div class="btn-group btn-group-sm" id="queueBtns"></div></div></div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="cfgModal"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 id="cfgTitle">新增任务</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body row g-2">
+    <input type="hidden" id="cfgId"><div class="col-6"><label>任务名*</label><input class="form-control" id="cfgName"></div><div class="col-6"><label>脚本名*</label><input class="form-control" id="cfgScript" placeholder="main_new.py"></div>
+    <div class="col-4"><label>平台</label><input class="form-control" id="cfgPlatform"></div><div class="col-4"><label>国家</label><input class="form-control" id="cfgCountry"></div><div class="col-4"><label>类型</label><select class="form-select" id="cfgType"><option>日度</option><option>周度</option><option>月度</option></select></div>
+    <div class="col-6"><label>店铺</label><input class="form-control" id="cfgShop" placeholder="空=全部"></div><div class="col-6"><label>业务日期</label><input type="date" class="form-control" id="cfgDate"></div>
+    <div class="col-4"><label>调度</label><select class="form-select" id="cfgSchedule"><option value="now">手动执行</option><option value="cron">定时Cron</option></select></div><div class="col-4"><label>Cron</label><input class="form-control" id="cfgCron" placeholder="0 3 * * *"></div><div class="col-4"><label>超时(秒)</label><input class="form-control" id="cfgTimeout" value="3600"></div>
+    <div class="col-6"><label>执行机器IP</label><input class="form-control" id="cfgIP"></div><div class="col-6"><label>优先级</label><input class="form-control" id="cfgPriority" value="1" type="number"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button class="btn btn-dark" onclick="saveCfg()">保存</button></div>
+</div></div></div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+var queuePage=1;
+function loadQueue(p){ queuePage=p||queuePage; var pp=document.getElementById('queuePageSize').value||15; fetch('/api/tasks/queue?page='+queuePage+'&per_page='+pp).then(r=>r.json()).then(d=>{ let h=''; d.records.forEach(r=>{ let b=r.task_status=='SUCCESS'?'success':r.task_status=='FAILED'?'danger':r.task_status=='RUNNING'?'warning':'secondary'; h+=`<tr><td>${r.task_name||''}</td><td><code>${r.task_uuid||''}</code></td><td><span class='badge bg-${b}'>${r.task_status}</span></td><td>${r.duration_sec||'-'}s</td><td>${r.success_shops||0}/${r.failed_shops||0}</td><td>${r.create_time||''}</td></tr>`; }); document.getElementById('queueBody').innerHTML=h||'<tr><td colspan=\"6\" class=\"text-center text-muted\">暂无</td></tr>'; var total=d.total||0, pages=Math.ceil(total/pp); document.getElementById('queueInfo').textContent='共 '+total+' 条'; var btns=''; for(var i=Math.max(1,queuePage-2);i<=Math.min(pages,queuePage+2);i++) btns+='<button class=\"btn btn-sm '+(i==queuePage?'btn-dark':'btn-outline-secondary')+'\" onclick=\"loadQueue('+i+')\">'+i+'</button>'; document.getElementById('queueBtns').innerHTML=btns; }); }
+function showCfgForm(){ document.getElementById('cfgId').value='';document.getElementById('cfgTitle').textContent='新增任务';['cfgName','cfgScript','cfgPlatform','cfgCountry','cfgShop','cfgDate','cfgCron','cfgIP'].forEach(id=>document.getElementById(id).value='');document.getElementById('cfgTimeout').value='3600';document.getElementById('cfgPriority').value='1';new bootstrap.Modal(document.getElementById('cfgModal')).show(); }
+function editCfg(c){ document.getElementById('cfgId').value=c.id;document.getElementById('cfgTitle').textContent='编辑: '+c.task_name;document.getElementById('cfgName').value=c.task_name;document.getElementById('cfgScript').value=c.script_name;document.getElementById('cfgPlatform').value=c.platform||'';document.getElementById('cfgCountry').value=c.country||'';document.getElementById('cfgShop').value=c.shop_name||'';document.getElementById('cfgDate').value=c.business_date||'';document.getElementById('cfgSchedule').value=c.schedule_type||'now';document.getElementById('cfgCron').value=c.cron_expression||'';document.getElementById('cfgTimeout').value=c.timeout_sec||3600;document.getElementById('cfgIP').value=c.executor_ip||'';document.getElementById('cfgPriority').value=c.priority||1;new bootstrap.Modal(document.getElementById('cfgModal')).show(); }
+function saveCfg(){ const d={id:document.getElementById('cfgId').value||null,task_name:document.getElementById('cfgName').value,script_name:document.getElementById('cfgScript').value,platform:document.getElementById('cfgPlatform').value,country:document.getElementById('cfgCountry').value,shop_name:document.getElementById('cfgShop').value,collect_type:document.getElementById('cfgType').value,business_date:document.getElementById('cfgDate').value,schedule_type:document.getElementById('cfgSchedule').value,cron_expression:document.getElementById('cfgCron').value,timeout_sec:parseInt(document.getElementById('cfgTimeout').value)||3600,executor_ip:document.getElementById('cfgIP').value,priority:parseInt(document.getElementById('cfgPriority').value)||1}; if(!d.task_name||!d.script_name)return showToast('任务名和脚本名必填','error'); fetch('/api/tasks/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).then(d=>{if(d.success){showToast('保存成功');location.reload()}else showToast(d.error,'error')}); }
+function delCfg(id){ if(!confirm('确定删除?'))return; fetch('/api/tasks/config/'+id,{method:'DELETE'}).then(r=>r.json()).then(d=>{if(d.success){showToast('已删除');location.reload()}}); }
+function runTask(id){ fetch('/api/tasks/run/'+id,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.success)showToast('已提交: '+d.task_uuid); else showToast(d.error,'error'); loadQueue();}); }
+loadQueue();setInterval(loadQueue,10000);
+</script>
+{% endblock %}

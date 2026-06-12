@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% block title %}申请权限 - RPA Admin{% endblock %}{% block content %}
+<h4 class="mb-3"><i class="bi bi-lock"></i> 申请更多权限</h4>
+<div class="row"><div class="col-md-7">
+<div class="card"><div class="card-header fw-bold">当前权限</div>
+<div class="card-body">
+    {% for p in current %}
+    <span class="badge bg-success me-1 mb-1">{{ page_map.get(p,p) }}</span>
+    {% else %}<span class="text-muted">暂无权限</span>{% endfor %}
+</div></div>
+<div class="card mt-3"><div class="card-header fw-bold">可申请权限 <small class="text-muted">勾选需要的权限</small></div>
+<div class="card-body"><form id="reqForm">
+    <div class="row g-2">
+    {% for p in available %}
+    <div class="col-6"><label class="form-check"><input class="form-check-input" type="checkbox" value="{{ p.key }}"> {{ p.name }}</label></div>
+    {% endfor %}
+    </div>
+    <div class="mt-3"><label class="form-label small fw-bold">申请理由</label><textarea class="form-control" id="reason" rows="2" placeholder="简要说明为什么需要这些权限"></textarea></div>
+    <button type="button" class="btn btn-dark mt-3" onclick="submitReq()">提交申请</button>
+</form></div></div>
+</div><div class="col-md-5">
+<div class="card bg-light"><div class="card-body small">
+    <h6>📌 说明</h6>
+    <p class="mb-1">1. 勾选需要的权限并填写理由</p>
+    <p class="mb-1">2. 管理员审批通过后即可访问</p>
+    <p class="mb-1">3. 审批结果可在本页查看</p>
+    <p class="mb-0 text-muted mt-2">默认角色已包含基础只读权限</p>
+</div></div>
+</div></div>
+{% endblock %}{% block extra_scripts %}<script>
+function submitReq(){
+    var perms=[], checks=document.querySelectorAll('#reqForm input[type=checkbox]:checked');
+    checks.forEach(c=>perms.push(c.value));
+    if(!perms.length) return showToast('请至少勾选一个权限','error');
+    fetch('/request-permission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({permissions:perms,reason:document.getElementById('reason').value})})
+        .then(r=>r.json()).then(d=>{if(d.success){showToast('申请已提交,等待管理员审批');location.reload()}else showToast(d.error,'error')});
+}
+</script>{% endblock %}
