@@ -26,7 +26,7 @@ class DatabaseConfig:
     host: str = _env("DB_HOST", "localhost")
     port: int = int(_env("DB_PORT", "3306"))
     user: str = _env("DB_USER", "root")
-    password: str = _env("DB_PASSWORD", "YOUR_MYSQL_PASSWORD")
+    password: str = _env("DB_PASSWORD", "123456")
     database: str = _env("DB_DATABASE", "data")
     charset: str = "utf8mb4"
     # 连接池参数
@@ -69,9 +69,9 @@ class PathConfig:
 @dataclass
 class AlertConfig:
     # DeepSeek API Key
-    deepseek_api_key: str = _env("DEEPSEEK_API_KEY", "YOUR_DEEPSEEK_API_KEY")
+    deepseek_api_key: str = _env("DEEPSEEK_API_KEY", "your-deepseek-api-key")
     # Bark推送URL
-    bark_url: str = _env("BARK_URL", "https://api.day.app/YOUR_BARK_KEY")
+    bark_url: str = _env("BARK_URL", "https://api.day.app/your-bark-key")
     # 钉钉/企业微信 Webhook（预留）
     dingtalk_webhook: str = _env("DINGTALK_WEBHOOK", "")
     wechat_webhook: str = _env("WECHAT_WEBHOOK", "")
@@ -136,7 +136,7 @@ class LowFrequencyConfig:
 
 @dataclass
 class RedisConfig:
-    redis_url: str = _env("REDIS_URL", "redis://:YOUR_REDIS_PASSWORD@localhost:6379")
+    redis_url: str = _env("REDIS_URL", "redis://:your-redis-password@localhost:6379")
 
 
 # ============================================================

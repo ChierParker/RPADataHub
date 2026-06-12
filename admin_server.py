@@ -3,7 +3,7 @@ RPA Admin 管理平台
 功能: ETL运行看板 / 运维SQL调度 / 路由配置管理
 启动: python admin_server.py
 访问: http://localhost:5000
-默认账号: admin / YOUR_ADMIN_PASSWORD
+默认账号: admin / RPA@admin2026
 """
 
 import hashlib
@@ -1615,6 +1615,80 @@ def ops_agent_chat():
     except Exception as e:
         return jsonify({"intent":None,"data":{},"reply":f"Agent异常: {str(e)[:100]}"})
 
+
+# --- Skill 4: rpa-rag-assistant ---
+
+def _ai_simple(prompt):
+    """AI 简单调用 (RAG使用)"""
+    try:
+        import requests
+        resp = requests.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers={"Authorization":"Bearer "+cfg.alert.deepseek_api_key,"Content-Type":"application/json"},
+            json={"model":"deepseek-chat","messages":[{"role":"user","content":prompt}],"max_tokens":800,"temperature":0.3},
+            timeout=15
+        )
+        if resp.status_code==200:
+            return resp.json()["choices"][0]["message"]["content"]
+    except: pass
+    return "AI 暂时无法响应"
+
+
+@app.route("/api/chat/history")
+@login_required
+def chat_history():
+    """获取对话历史"""
+    rows = query("SELECT id, role, message, intent, create_time FROM chat_history WHERE username=%s ORDER BY id DESC LIMIT 50", (session["user"]["username"],))
+    records = rows.to_dict("records") if not rows.empty else []
+    for r in records:
+        if hasattr(r.get("create_time"),"strftime"): r["create_time"]=r["create_time"].strftime("%H:%M")
+    return jsonify(list(reversed(records)))
+
+@app.route("/api/chat/save", methods=["POST"])
+@login_required
+def chat_save():
+    """保存对话"""
+    data = request.json
+    execute("INSERT INTO chat_history (username,role,message,intent) VALUES (%s,%s,%s,%s)",
+        (session["user"]["username"], data.get("role","user"), data.get("message",""), data.get("intent","")))
+    return jsonify({"success":True})
+
+
+@app.route("/api/chat/delete/<int:msg_id>", methods=["DELETE"])
+@login_required
+def chat_delete(msg_id):
+    execute("DELETE FROM chat_history WHERE id=%s AND username=%s", (msg_id, session["user"]["username"]))
+    return jsonify({"success":True})
+@app.route("/api/chat/clear", methods=["POST"])
+@login_required
+def chat_clear():
+    """清空对话历史"""
+    execute("DELETE FROM chat_history WHERE username=%s", (session["user"]["username"],))
+    return jsonify({"success":True})
+
+@app.route("/api/ops/rag/ask", methods=["POST"])
+@login_required
+def ops_rag_ask():
+    """RAG 知识库问答"""
+    question = request.json.get("question","")
+    try:
+        from Skill.rpa_rag_assistant.main import create_rag_engine
+        engine = create_rag_engine(ai_call=lambda p: _ai_simple(p))
+        result = engine.ask(question)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"answer":f"RAG异常: {str(e)[:150]}","sources":[],"chunk_count":0})
+
+@app.route("/api/ops/rag/stats")
+@login_required
+def ops_rag_stats():
+    try:
+        from Skill.rpa_rag_assistant.main import create_rag_engine
+        engine = create_rag_engine()
+        return jsonify(engine.get_stats())
+    except Exception as e:
+        return jsonify({"total_chunks":0,"documents":0,"sources":[],"error":str(e)})
+
 @app.route("/api/ops/health_scan")
 @login_required
 def ops_health_scan():
@@ -1681,6 +1755,6 @@ if __name__ == "__main__":
     print("=" * 50)
     print("  RPA Admin 管理平台")
     print(f"  访问: http://localhost:5000")
-    print(f"  账号: admin / YOUR_ADMIN_PASSWORD")
+    print(f"  账号: admin / RPA@admin2026")
     print("=" * 50)
     app.run(host="0.0.0.0", port=5000, debug=False)
