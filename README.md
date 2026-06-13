@@ -159,10 +159,15 @@ RPADataHub/
 │   ├── library/                 #   工具库
 │   └── amazon_login/            #   Amazon 登录模块 (现有)
 │
-├── demo_test.py                 # 端到端测试脚本 (SQLite模拟)
-├── generate_mock_data.py        # 电商模拟数据生成器
+├── tests/                        # 单元测试
+│   ├── test_error_classifier.py  #   MySQL错误分类器测试 (11项)
+│   └── test_data_validator.py    #   数据校验引擎测试 (17项)
 ├── logger_config.py             # 结构化日志 (TraceLogger + trace_id)
-└── requirements.txt
+├── mq/
+│   └── redis_broker.py          # Redis MQ 代理 (生产/消费 + DB降级)
+├── .env.example                 # 环境变量模板
+├── start_all_services.bat       # Windows 一键启动脚本
+└── UNIVERSAL_DEV_STANDARDS.md   # 通用开发约束与架构准则
 ```
 
 ---
@@ -172,27 +177,26 @@ RPADataHub/
 ### 环境要求
 - Python 3.10+ / MySQL 8.0+ / Redis (可选)
 
-### 1. 密钥配置
-所有密钥统一在 `config/settings.py` 中，支持环境变量覆盖：
+### 1. 环境配置（推荐方式）
 
-| 密钥 | 配置项 | 环境变量 |
-|------|--------|---------|
-| MySQL 密码 | `DatabaseConfig.password` | `RPA_DB_PASSWORD` |
-| DeepSeek Key | `AlertConfig.deepseek_api_key` | `RPA_DEEPSEEK_API_KEY` |
-| Redis 密码 | `RedisConfig.redis_url` | `RPA_REDIS_URL` |
-| Bark Key | `AlertConfig.bark_url` | `RPA_BARK_URL` |
+复制 `.env.example` 为 `.env`，填入真实值即可（`python-dotenv` 自动加载）：
 
-**方式一：环境变量（推荐）**
 ```bash
-set RPA_DB_PASSWORD=your_password
-set RPA_DEEPSEEK_API_KEY=sk-xxxxxxxx
-set RPA_REDIS_URL=redis://:your_password@localhost:6379
+copy .env.example .env
+# 编辑 .env 填入你的真实密钥
 ```
 
-**方式二：编辑 `config/settings.py`**
-修改对应 `_env()` 的第二个参数（默认值）为你的真实密钥。
+| 配置项 | 环境变量 | 说明 |
+|--------|---------|------|
+| MySQL 密码 | `RPA_DB_PASSWORD` | 数据库密码 |
+| MySQL 连接 | `RPA_DB_HOST` / `RPA_DB_PORT` / `RPA_DB_USER` / `RPA_DB_DATABASE` | 数据库连接信息 |
+| DeepSeek Key | `RPA_DEEPSEEK_API_KEY` | AI 功能必需 |
+| Redis 连接 | `RPA_REDIS_URL` | 格式 `redis://:password@host:6379`，不配则自动降级 DB 轮询 |
+| Bark 推送 | `RPA_BARK_URL` | 告警推送（可选） |
+| Flask 密钥 | `RPA_FLASK_SECRET_KEY` | 用于 Session 签名，生产环境务必修改 |
+| 文件路径 | `RPA_WATCH_FOLDER` / `RPA_ARCHIVE_FOLDER` / `RPA_LOG_DIR` | 数据目录 |
 
-> 完整清单见 `.env.example`
+> 启动时如果看到 `[Config] 警告` 说明 `.env` 未配置或配置不完整。完整清单见 `.env.example`。
 
 ### 2. 初始化数据库
 ```bash
@@ -331,6 +335,13 @@ waitress-serve --host=0.0.0.0 --port=5000 admin_server:app
 ---
 
 ## 开发规范
+
+本项目遵循 `UNIVERSAL_DEV_STANDARDS.md` 中的架构准则（MUST/SHOULD/MAY 三级约束）。
+
+### 运行测试
+```bash
+python -m unittest discover tests -v     # 运行所有测试
+```
 
 ### 新增采集器
 
