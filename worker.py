@@ -9,6 +9,9 @@ import os, sys, subprocess, socket, time, json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from logger_config import setup_logger
+
+logger = setup_logger("Worker")
 
 MACHINE_IP = socket.gethostbyname(socket.gethostname())
 COLLECTION_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "playwright_collection_script")
@@ -21,9 +24,7 @@ def execute_task(task: dict):
     # 整个 task 就是参数（Redis 消息无嵌套 task_params 字段）
     task_params = task
 
-    print(f"\n{'='*50}")
-    print(f"[{datetime.now()}] 执行任务: {task_uuid} ({script_name})")
-    print(f"{'='*50}")
+    logger.info(f"开始执行: {task_uuid} ({script_name})", task_uuid)
 
     start = time.time()
     success = False
@@ -43,37 +44,37 @@ def execute_task(task: dict):
         if result.stdout:
             for line in result.stdout.split("\n")[-10:]:
                 if line.strip():
-                    print(f"  [out] {line.strip()[:200]}")
+                    logger.debug(f"[out] {line.strip()[:200]}", task_uuid)
         if result.stderr:
             for line in result.stderr.split("\n")[-5:]:
                 if line.strip():
-                    print(f"  [ERR] {line.strip()[:200]}")
+                    logger.warning(f"[stderr] {line.strip()[:200]}", task_uuid)
 
     except subprocess.TimeoutExpired:
         error_msg = f"任务超时({task_params.get('timeout_sec', 3600)}s)"
+        logger.error(error_msg, task_uuid)
     except Exception as e:
         error_msg = str(e)[:2000]
+        logger.error(f"任务异常: {error_msg}", task_uuid, exc_info=True)
 
     duration = int(time.time() - start)
     new_status = "SUCCESS" if success else "FAILED"
 
     # 更新 task_queue 状态
     try:
-        from config.settings import get_config
-        import pymysql
-        cfg = get_config()
-        conn = pymysql.connect(**cfg.database.as_dict())
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE task_queue SET task_status=%s, end_time=NOW(), duration_sec=%s, error_message=%s WHERE task_uuid=%s",
-            (new_status, duration, error_msg, task_uuid)
-        )
-        conn.commit()
-        conn.close()
+        from core.db_operations import DatabaseManager
+        db = DatabaseManager(task_uuid)
+        with db.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE task_queue SET task_status=%s, end_time=NOW(), duration_sec=%s, error_message=%s WHERE task_uuid=%s",
+                    (new_status, duration, error_msg, task_uuid)
+                )
+            conn.commit()
     except Exception as e:
-        print(f"[Worker] 状态更新失败: {e}")
+        logger.error(f"状态更新失败: {e}", task_uuid)
 
-    print(f"[{datetime.now()}] 完成: {task_uuid} → {new_status} ({duration}s)")
+    logger.info(f"完成: {task_uuid} -> {new_status} ({duration}s)", task_uuid)
     return new_status
 
 
@@ -88,13 +89,10 @@ def main():
         print("  python worker.py --once   单次执行后退出（DB 模式）")
         return
 
-    print(f"[{datetime.now()}] RPA 执行器 Agent v2.0")
-    print(f"  机器IP: {MACHINE_IP}")
-    print(f"  采集目录: {COLLECTION_DIR}")
-    print(f"{'='*50}")
+    logger.info(f"RPA 执行器 Agent v2.0 启动 | IP={MACHINE_IP} | 采集目录={COLLECTION_DIR}")
 
     if use_db_only:
-        print("[Worker] 强制 DB 轮询模式")
+        logger.info("强制 DB 轮询模式")
         from mq.redis_broker import RedisBroker
         broker = RedisBroker.__new__(RedisBroker)
         broker._redis_available = False
@@ -103,10 +101,10 @@ def main():
         try:
             from mq.redis_broker import RedisBroker
             broker = RedisBroker()
-            print(f"[Worker] MQ 模式: {'Redis Streams' if broker._redis_available else 'DB 轮询(Redis不可用)'}")
+            logger.info(f"MQ 模式: {'Redis Streams' if broker._redis_available else 'DB 轮询(Redis不可用)'}")
             broker.consume(execute_task)
         except ImportError:
-            print("[Worker] redis-py 未安装, 使用 DB 轮询")
+            logger.warning("redis-py 未安装, 使用 DB 轮询")
             from mq.redis_broker import RedisBroker
             broker = RedisBroker.__new__(RedisBroker)
             broker._redis_available = False

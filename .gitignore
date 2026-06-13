@@ -23,6 +23,11 @@ venv/
 amazon_cookies.json
 Login_log/
 
+# Database (runtime)
+*.db
+*.sqlite
+*.sqlite3
+
 # Logs
 logs/
 *.log

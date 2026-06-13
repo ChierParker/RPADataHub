@@ -14,8 +14,10 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.settings import get_config
+from logger_config import setup_logger
 
 cfg = get_config()
+logger = setup_logger("RedisBroker")
 
 
 class RedisBroker:
@@ -55,11 +57,11 @@ class RedisBroker:
 
             # Redis List 不需要预创建
 
-            print(f"[MQ] Redis List 已连接: {self._redis_url}")
+            logger.info(f"Redis List 已连接: {self._redis_url}")
         except ImportError:
-            print("[MQ] redis-py 未安装, 降级为 DB 轮询模式. pip install redis")
+            logger.warning("redis-py 未安装, 降级为 DB 轮询模式. pip install redis")
         except Exception as e:
-            print(f"[MQ] Redis 不可用 ({e}), 降级为 DB 轮询模式")
+            logger.warning(f"Redis 不可用 ({e}), 降级为 DB 轮询模式")
 
     # ============================================================
     # 生产端: Admin 下发任务
@@ -89,9 +91,9 @@ class RedisBroker:
                 )
                 # 限制队列长度防止内存溢出
                 self._redis.ltrim(self.QUEUE_KEY, 0, 9999)
-                print(f"[MQ] 已发布: {task_uuid} -> Redis Queue")
+                logger.info(f"已发布: {task_uuid} -> Redis Queue")
             except Exception as e:
-                print(f"[MQ] Redis 发布失败: {e}")
+                logger.error(f"Redis 发布失败: {e}")
 
         # 2. DB task_queue 写入（审计通道，也作降级兜底）
         self._write_db_audit(task_params)
@@ -101,22 +103,22 @@ class RedisBroker:
     def _write_db_audit(self, task_params):
         """写入 DB 审计日志（同时也是 Redis 不可用时的降级通道）"""
         try:
-            import pymysql
-            conn = pymysql.connect(**cfg.database.as_dict())
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO task_queue (config_id, task_uuid, script_name, task_params, executor_ip) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (task_params.get("config_id", 1),
-                 task_params.get("task_uuid", ""),
-                 task_params.get("script_name", ""),
-                 json.dumps(task_params, ensure_ascii=False),
-                 task_params.get("executor_ip"))
-            )
-            conn.commit()
-            conn.close()
+            from core.db_operations import DatabaseManager
+            db = DatabaseManager()
+            with db.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO task_queue (config_id, task_uuid, script_name, task_params, executor_ip) "
+                        "VALUES (%s, %s, %s, %s, %s)",
+                        (task_params.get("config_id", 1),
+                         task_params.get("task_uuid", ""),
+                         task_params.get("script_name", ""),
+                         json.dumps(task_params, ensure_ascii=False),
+                         task_params.get("executor_ip"))
+                    )
+                conn.commit()
         except Exception as e:
-            print(f"[MQ] DB 审计写入失败: {e}")
+            logger.error(f"DB 审计写入失败: {e}")
 
     # ============================================================
     # 消费端: Worker 监听任务
@@ -153,11 +155,11 @@ class RedisBroker:
                     data = json.loads(msg_data)
                     callback(data)
                 except Exception as e:
-                    print(f"[MQ] 消息处理失败: {e}")
+                    logger.error(f"消息处理失败: {e}")
 
             except redis.ConnectionError as e:
                 fail_count += 1
-                print(f"[MQ] Redis 连接断开 ({fail_count}/3): {e}")
+                logger.warning(f"Redis 连接断开 ({fail_count}/3): {e}")
                 if fail_count >= 3:
                     self._redis_available = False
                     self._consume_db_fallback(callback)
@@ -169,9 +171,9 @@ class RedisBroker:
                 break
             except Exception as e:
                 fail_count += 1
-                print(f"[MQ] 异常 ({fail_count}/3): {type(e).__name__}: {e}")
+                logger.error(f"异常 ({fail_count}/3): {type(e).__name__}: {e}")
                 if fail_count >= 3:
-                    print("[MQ] 连续失败3次, 降级 DB")
+                    logger.warning("连续失败3次, 降级 DB")
                     self._redis_available = False
                     self._consume_db_fallback(callback)
                     break
@@ -179,7 +181,8 @@ class RedisBroker:
 
     def _consume_db_fallback(self, callback):
         """DB 轮询降级模式（定期尝试重连 Redis）"""
-        import pymysql, socket
+        import socket
+        from core.db_operations import DatabaseManager
         machine_ip = socket.gethostbyname(socket.gethostname())
         poll_count = 0
 
@@ -189,66 +192,68 @@ class RedisBroker:
             if poll_count % 30 == 0:
                 self._init_redis()
                 if self._redis_available:
-                    print("[MQ] Redis 已恢复, 切回 MQ 模式")
+                    logger.info("Redis 已恢复, 切回 MQ 模式")
                     self._consume_redis(callback, 5000)
                     return
 
             try:
-                conn = pymysql.connect(**cfg.database.as_dict())
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT q.*, c.script_name, c.timeout_sec, c.priority "
-                    "FROM task_queue q JOIN task_config c ON q.config_id = c.id "
-                    "WHERE q.task_status = 'PENDING' "
-                    "  AND (q.executor_ip IS NULL OR q.executor_ip = %s) "
-                    "ORDER BY c.priority ASC, q.create_time ASC LIMIT 1",
-                    (machine_ip,)
-                )
-                row = cur.fetchone()
+                db = DatabaseManager()
+                with db.connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT q.*, c.script_name, c.timeout_sec, c.priority "
+                            "FROM task_queue q JOIN task_config c ON q.config_id = c.id "
+                            "WHERE q.task_status = 'PENDING' "
+                            "  AND (q.executor_ip IS NULL OR q.executor_ip = '' OR q.executor_ip = %s) "
+                            "ORDER BY c.priority ASC, q.create_time ASC LIMIT 1",
+                            (machine_ip,)
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            task = {
+                                "task_uuid": row[2],
+                                "script_name": row[7] or row[3],
+                                "config_id": row[1],
+                                "task_params": row[4],
+                            }
+                            cur.execute(
+                                "UPDATE task_queue SET task_status='RUNNING', executor_ip=%s, start_time=NOW() "
+                                "WHERE task_uuid=%s AND task_status='PENDING'",
+                                (machine_ip, task["task_uuid"])
+                            )
+                        conn.commit()
                 if row:
-                    task = {
-                        "task_uuid": row[2],
-                        "script_name": row[7] or row[3],
-                        "config_id": row[1],
-                        "task_params": row[4],
-                    }
-                    cur.execute(
-                        "UPDATE task_queue SET task_status='RUNNING', executor_ip=%s, start_time=NOW() "
-                        "WHERE task_uuid=%s AND task_status='PENDING'",
-                        (machine_ip, task["task_uuid"])
-                    )
-                    conn.commit()
-                    conn.close()
                     callback(task)
                 else:
-                    conn.close()
                     time.sleep(5)
             except Exception as e:
-                print(f"[MQ-DB] 轮询异常: {e}")
+                logger.error(f"DB 轮询异常: {e}")
                 time.sleep(5)
 
     def _check_db_pending(self, callback):
         """Redis 空闲时检查 DB 是否有遗漏任务(消费一个即返回,不永久降级)"""
-        import pymysql, socket
+        import socket
+        from core.db_operations import DatabaseManager
         try:
             machine_ip = socket.gethostbyname(socket.gethostname())
-            conn = pymysql.connect(**cfg.database.as_dict())
-            cur = conn.cursor()
-            cur.execute(
-                "SELECT q.*, c.script_name, c.timeout_sec FROM task_queue q "
-                "JOIN task_config c ON q.config_id = c.id "
-                "WHERE q.task_status='PENDING' AND (q.executor_ip IS NULL OR q.executor_ip=%s) "
-                "ORDER BY c.priority ASC, q.create_time ASC LIMIT 1",
-                (machine_ip,)
-            )
-            row = cur.fetchone()
+            db = DatabaseManager()
+            with db.connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT q.*, c.script_name, c.timeout_sec FROM task_queue q "
+                        "JOIN task_config c ON q.config_id = c.id "
+                        "WHERE q.task_status='PENDING' AND (q.executor_ip IS NULL OR q.executor_ip='' OR q.executor_ip=%s) "
+                        "ORDER BY c.priority ASC, q.create_time ASC LIMIT 1",
+                        (machine_ip,)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        task = {"task_uuid": row[2], "script_name": row[7] or row[3], "config_id": row[1], "task_params": row[4]}
+                        cur.execute("UPDATE task_queue SET task_status='RUNNING', executor_ip=%s, start_time=NOW() WHERE task_uuid=%s AND task_status='PENDING'",
+                            (machine_ip, task["task_uuid"]))
+                    conn.commit()
             if row:
-                task = {"task_uuid": row[2], "script_name": row[7] or row[3], "config_id": row[1], "task_params": row[4]}
-                cur.execute("UPDATE task_queue SET task_status='RUNNING', executor_ip=%s, start_time=NOW() WHERE task_uuid=%s AND task_status='PENDING'",
-                    (machine_ip, task["task_uuid"]))
-                conn.commit()
-                conn.close()
                 callback(task)
                 return
-            conn.close()
-        except: pass
+        except Exception:
+            pass  # _check_db_pending 是辅助兜底，不影响主消费循环

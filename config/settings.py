@@ -11,6 +11,16 @@
 import os
 from dataclasses import dataclass, field
 
+# 自动加载项目根目录下的 .env 文件（若存在）
+# 必须在 dataclass 字段默认值求值之前执行，否则 _env() 读不到环境变量
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    if os.path.isfile(_env_file):
+        _load_dotenv(_env_file, override=False)
+except ImportError:
+    pass  # python-dotenv 未安装时静默跳过
+
 
 def _env(key, default):
     """读取环境变量，不存在则返回默认值"""
@@ -26,7 +36,7 @@ class DatabaseConfig:
     host: str = _env("DB_HOST", "localhost")
     port: int = int(_env("DB_PORT", "3306"))
     user: str = _env("DB_USER", "root")
-    password: str = _env("DB_PASSWORD", "123456")
+    password: str = _env("DB_PASSWORD", "your-db-password")
     database: str = _env("DB_DATABASE", "data")
     charset: str = "utf8mb4"
     # 连接池参数
@@ -178,11 +188,47 @@ _config_instance = None
 
 
 def get_config() -> AppConfig:
-    """获取全局配置单例"""
+    """获取全局配置单例（首次调用时校验关键配置）"""
     global _config_instance
     if _config_instance is None:
         _config_instance = AppConfig()
+        _validate_critical_config(_config_instance)
     return _config_instance
+
+
+# 标记为占位符的关键配置默认值
+_PLACEHOLDER_VALUES = {
+    "your-db-password",
+    "your-deepseek-api-key",
+    "your-bark-key",
+    "your-redis-password",
+}
+
+
+def _is_placeholder(value: str) -> bool:
+    """检查配置值是否为占位符"""
+    return any(p in str(value) for p in _PLACEHOLDER_VALUES)
+
+
+def _validate_critical_config(cfg: AppConfig):
+    """校验关键配置：占位符仅告警，不阻断启动"""
+    import sys as _sys
+    warnings = []
+
+    if _is_placeholder(cfg.database.password):
+        warnings.append("RPA_DB_PASSWORD 仍为占位符，请设置真实数据库密码")
+    if _is_placeholder(cfg.alert.deepseek_api_key):
+        warnings.append("RPA_DEEPSEEK_API_KEY 仍为占位符，AI 功能将不可用")
+    if _is_placeholder(cfg.alert.bark_url):
+        warnings.append("RPA_BARK_URL 仍为占位符，Bark 告警推送将不可用")
+    if _is_placeholder(cfg.redis.redis_url):
+        warnings.append("RPA_REDIS_URL 仍为占位符，将自动降级为 DB 轮询模式")
+
+    if warnings:
+        print("[Config] 警告：以下配置项使用了占位符值：", file=_sys.stderr)
+        for w in warnings:
+            print(f"  ⚠ {w}", file=_sys.stderr)
+        print("[Config] 如需正常运行，请在 .env 文件中设置对应的环境变量", file=_sys.stderr)
 
 
 def reload_config():

@@ -9,61 +9,59 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config.settings import get_config
+from logger_config import setup_logger
 
 cfg = get_config()
+logger = setup_logger("TaskRunner")
 
 
 def log(msg, task_uuid="system"):
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{ts} | {task_uuid} | {msg}")
+    """向后兼容的日志函数，内部使用 TraceLogger"""
+    logger.info(msg, task_uuid)
 
 
 def write_task_record(task_uuid, shop_name, platform, script_name, ods_table,
                       collect_result, row_count=0, error_msg="", duration=0):
     """写入单店铺采集明细"""
-    import pymysql
-    conn = None
+    from core.db_operations import DatabaseManager
+    db = DatabaseManager(task_uuid)
     try:
-        conn = pymysql.connect(**cfg.database.as_dict())
-        cur = conn.cursor()
-        cur.execute(
-            """INSERT INTO task_record (task_uuid, shop_name, platform, script_name, ods_table,
-               collect_start, collect_end, collect_result, row_count, error_message, duration_sec)
-               VALUES (%s,%s,%s,%s,%s,NOW(),NOW(),%s,%s,%s,%s)""",
-            (task_uuid, shop_name, platform, script_name, ods_table,
-             collect_result, row_count, error_msg, duration)
-        )
-        conn.commit()
+        with db.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO task_record (task_uuid, shop_name, platform, script_name, ods_table,
+                       collect_start, collect_end, collect_result, row_count, error_message, duration_sec)
+                       VALUES (%s,%s,%s,%s,%s,NOW(),NOW(),%s,%s,%s,%s)""",
+                    (task_uuid, shop_name, platform, script_name, ods_table,
+                     collect_result, row_count, error_msg, duration)
+                )
+            conn.commit()
     except Exception as e:
         log(f"写入task_record失败: {e}", task_uuid)
-    finally:
-        if conn: conn.close()
 
 
 def write_task_summary(task_uuid, task_name, total, success, failed, no_data, total_rows, duration):
     """写入任务汇总报告"""
-    import pymysql
-    conn = None
+    from core.db_operations import DatabaseManager
+    db = DatabaseManager(task_uuid)
     try:
-        conn = pymysql.connect(**cfg.database.as_dict())
-        cur = conn.cursor()
-        rate = round(success / total * 100, 2) if total > 0 else 0
-        cur.execute(
-            """INSERT INTO task_summary (task_uuid, task_name, total_shops, success_shops,
-               failed_shops, no_data_shops, total_rows, total_duration, success_rate)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-               ON DUPLICATE KEY UPDATE success_shops=VALUES(success_shops),
-               failed_shops=VALUES(failed_shops), no_data_shops=VALUES(no_data_shops),
-               total_rows=VALUES(total_rows), total_duration=VALUES(total_duration),
-               success_rate=VALUES(success_rate)""",
-            (task_uuid, task_name, total, success, failed, no_data, total_rows, duration, rate)
-        )
-        conn.commit()
+        with db.connection() as conn:
+            with conn.cursor() as cur:
+                rate = round(success / total * 100, 2) if total > 0 else 0
+                cur.execute(
+                    """INSERT INTO task_summary (task_uuid, task_name, total_shops, success_shops,
+                       failed_shops, no_data_shops, total_rows, total_duration, success_rate)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       ON DUPLICATE KEY UPDATE success_shops=VALUES(success_shops),
+                       failed_shops=VALUES(failed_shops), no_data_shops=VALUES(no_data_shops),
+                       total_rows=VALUES(total_rows), total_duration=VALUES(total_duration),
+                       success_rate=VALUES(success_rate)""",
+                    (task_uuid, task_name, total, success, failed, no_data, total_rows, duration, rate)
+                )
+            conn.commit()
         log(f"汇总: 总{total} 成功{success} 失败{failed} 无数据{no_data} 成功率{rate}%", task_uuid)
     except Exception as e:
         log(f"写入task_summary失败: {e}", task_uuid)
-    finally:
-        if conn: conn.close()
 
 
 def run_collection(params):
@@ -148,7 +146,7 @@ def main():
     try:
         params = json.loads(args.params)
     except json.JSONDecodeError as e:
-        print(f"参数解析失败: {e}")
+        logger.error(f"参数解析失败: {e}")
         sys.exit(1)
 
     task_uuid = params.get("task_uuid", "unknown")

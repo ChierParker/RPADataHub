@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config.settings import get_config
 
 app = Flask(__name__)
-app.secret_key = b'your-flask-secret-key'
+app.secret_key = os.environ.get("RPA_FLASK_SECRET_KEY", os.urandom(24).hex()).encode()
 cfg = get_config()
 
 # ============================================================
