@@ -1,7 +1,7 @@
 @echo off
 title RPADataHub Services
-cd /d C:\Users\JackPeesao\Desktop\RPADataHub
-set PYTHON=C:\Users\JackPeesao\AppData\Local\Programs\Python\Python310\python.exe
+cd /d C:\Users\YOURNAME\Desktop\RPADataHub
+set PYTHON=C:\Users\YOURNAME\AppData\Local\Programs\Python\Python310\python.exe
 REM 从 .env 文件加载或在此处设置
 REM set REDIS_URL=redis://:your-redis-password@localhost:6379
 
