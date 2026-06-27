@@ -1,0 +1,587 @@
+"use client";
+
+import React, {
+  Dispatch,
+  SetStateAction,
+  useState,
+  DragEvent,
+  FormEvent,
+} from "react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Plus, Trash2, Flame, Building2, MapPin, ExternalLink, GripVertical, MessageSquare, Video } from "lucide-react";
+
+// ============================================
+// TYPES
+// ============================================
+
+export type ColumnType = "saved" | "applied" | "interview" | "offer" | "rejected";
+
+export type CardType = {
+  id: string;
+  title: string;
+  company: string;
+  location?: string;
+  column: ColumnType;
+  jobUrl?: string;
+  salary?: string;
+  // Source tracking
+  isManual?: boolean;
+  isApplied?: boolean;
+  isSaved?: boolean;
+  opportunityId?: string;
+  // For chat functionality
+  applicationId?: string;
+  employerId?: string;
+  employerName?: string;
+  status?: string;
+};
+
+export type ColumnConfig = {
+  id: ColumnType;
+  title: string;
+  headingColor: string;
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
+type KanbanProps = {
+  cards: CardType[];
+  setCards: Dispatch<SetStateAction<CardType[]>>;
+  columns?: ColumnConfig[];
+  className?: string;
+  onChat?: (card: CardType) => void;
+  onVideoCall?: (card: CardType) => void;
+};
+
+const DEFAULT_COLUMNS: ColumnConfig[] = [
+  { id: "saved", title: "Saved", headingColor: "text-neutral-400" },
+  { id: "applied", title: "Applied", headingColor: "text-blue-400" },
+  { id: "interview", title: "Interview", headingColor: "text-amber-400" },
+  { id: "offer", title: "Offer", headingColor: "text-emerald-400" },
+  { id: "rejected", title: "Rejected", headingColor: "text-red-400" },
+];
+
+export const Kanban = ({ 
+  cards, 
+  setCards, 
+  columns = DEFAULT_COLUMNS,
+  className,
+  onChat,
+  onVideoCall
+}: KanbanProps) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  const [isOverDeleteZone, setIsOverDeleteZone] = useState(false);
+
+  const handleDragStart = (cardId: string) => {
+    setIsDragging(true);
+    setDraggingCardId(cardId);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggingCardId(null);
+    setIsOverDeleteZone(false);
+  };
+
+  return (
+    <div 
+      className={cn("relative flex h-full w-full gap-4 overflow-x-auto p-6 pt-8", className)}
+      onDragEnd={handleDragEnd}
+    >
+      {columns.map((col) => (
+        <Column
+          key={col.id}
+          title={col.title}
+          column={col.id}
+          headingColor={col.headingColor}
+          cards={cards}
+          setCards={setCards}
+          onChat={onChat}
+          onDragStart={handleDragStart}
+          draggingCardId={draggingCardId}
+          isOverDeleteZone={isOverDeleteZone}
+          onVideoCall={onVideoCall}
+        />
+      ))}
+      <DeleteDropZone 
+        setCards={setCards} 
+        isDragging={isDragging} 
+        onHoverChange={setIsOverDeleteZone}
+      />
+    </div>
+  );
+};
+
+// ============================================
+// COLUMN
+// ============================================
+
+type ColumnProps = {
+  title: string;
+  headingColor: string;
+  cards: CardType[];
+  column: ColumnType;
+  setCards: Dispatch<SetStateAction<CardType[]>>;
+  onChat?: (card: CardType) => void;
+  onDragStart?: (cardId: string) => void;
+  draggingCardId?: string | null;
+  isOverDeleteZone?: boolean;
+  onVideoCall?: (card: CardType) => void;
+};
+
+const Column = ({
+  title,
+  headingColor,
+  cards,
+  column,
+  setCards,
+  onChat,
+  onDragStart: onColumnDragStart,
+  draggingCardId,
+  isOverDeleteZone,
+  onVideoCall,
+}: ColumnProps) => {
+  const [active, setActive] = useState(false);
+
+  const handleDragStart = (e: DragEvent, card: CardType) => {
+    e.dataTransfer.setData("cardId", card.id);
+    onColumnDragStart?.(card.id);
+  };
+
+  const handleDragEnd = (e: DragEvent) => {
+    const cardId = e.dataTransfer.getData("cardId");
+
+    setActive(false);
+    clearHighlights();
+
+    const indicators = getIndicators();
+    const { element } = getNearestIndicator(e, indicators);
+
+    const before = element.dataset.before || "-1";
+
+    if (before !== cardId) {
+      let copy = [...cards];
+
+      let cardToTransfer = copy.find((c) => c.id === cardId);
+      if (!cardToTransfer) return;
+      cardToTransfer = { ...cardToTransfer, column };
+
+      copy = copy.filter((c) => c.id !== cardId);
+
+      const moveToBack = before === "-1";
+
+      if (moveToBack) {
+        copy.push(cardToTransfer);
+      } else {
+        const insertAtIndex = copy.findIndex((el) => el.id === before);
+        if (insertAtIndex === undefined) return;
+
+        copy.splice(insertAtIndex, 0, cardToTransfer);
+      }
+
+      setCards(copy);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    highlightIndicator(e);
+    setActive(true);
+  };
+
+  const clearHighlights = (els?: HTMLElement[]) => {
+    const indicators = els || getIndicators();
+    indicators.forEach((i) => {
+      i.style.opacity = "0";
+    });
+  };
+
+  const highlightIndicator = (e: DragEvent) => {
+    const indicators = getIndicators();
+    clearHighlights(indicators);
+    const el = getNearestIndicator(e, indicators);
+    el.element.style.opacity = "1";
+  };
+
+  const getNearestIndicator = (e: DragEvent, indicators: HTMLElement[]) => {
+    const DISTANCE_OFFSET = 50;
+
+    const el = indicators.reduce(
+      (closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = e.clientY - (box.top + DISTANCE_OFFSET);
+
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      },
+      {
+        offset: Number.NEGATIVE_INFINITY,
+        element: indicators[indicators.length - 1],
+      }
+    );
+
+    return el;
+  };
+
+  const getIndicators = () => {
+    return Array.from(
+      document.querySelectorAll(
+        `[data-column="${column}"]`
+      ) as unknown as HTMLElement[]
+    );
+  };
+
+  const handleDragLeave = () => {
+    clearHighlights();
+    setActive(false);
+  };
+
+  const filteredCards = cards.filter((c) => c.column === column);
+
+  return (
+    <div className="w-72 shrink-0">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className={`font-medium ${headingColor}`}>{title}</h3>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-sm text-muted-foreground">
+          {filteredCards.length}
+        </span>
+      </div>
+      <div
+        onDrop={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        className={cn(
+          "w-full rounded-3xl transition-colors min-h-[400px] pb-4",
+          active ? "bg-muted/50" : "bg-transparent"
+        )}
+      >
+        {filteredCards.map((c) => (
+          <Card 
+            key={c.id} 
+            {...c} 
+            handleDragStart={handleDragStart} 
+            onChat={onChat}
+            isBeingDeletedPreview={draggingCardId === c.id && isOverDeleteZone}
+            onVideoCall={onVideoCall}
+          />
+        ))}
+        <DropIndicator beforeId={null} column={column} />
+        <AddCard column={column} setCards={setCards} />
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// CARD
+// ============================================
+
+type CardProps = CardType & {
+  handleDragStart: (e: DragEvent, card: CardType) => void;
+  onChat?: (card: CardType) => void;
+  isBeingDeletedPreview?: boolean;
+  onVideoCall?: (card: CardType) => void;
+};
+
+const Card = ({ 
+  title, 
+  id, 
+  column, 
+  company, 
+  location, 
+  jobUrl, 
+  salary,
+  isManual,
+  isApplied,
+  isSaved,
+  opportunityId,
+  applicationId,
+  employerId,
+  employerName,
+  status,
+  handleDragStart,
+  onChat,
+  isBeingDeletedPreview,
+  onVideoCall
+}: CardProps) => {
+  const cardData: CardType = { 
+    title, id, column, company, location, jobUrl, salary,
+    isManual, isApplied, isSaved, opportunityId,
+    applicationId, employerId, employerName, status
+  };
+
+  // Check if chat should be available (for Approved, Invited, Interview statuses)
+  const canChat = onChat && ["Approved", "Invited", "Interview", "interview", "offer"].includes(status || column);
+
+  return (
+    <>
+      <DropIndicator beforeId={id} column={column} />
+      <motion.div
+        layout
+        layoutId={id}
+        draggable="true"
+        onDragStart={(e) => handleDragStart(e as unknown as DragEvent, cardData)}
+        animate={{
+          scale: isBeingDeletedPreview ? 0.95 : 1,
+          opacity: isBeingDeletedPreview ? 0.6 : 1,
+        }}
+        transition={{ duration: 0.15 }}
+        className={cn(
+          "cursor-grab rounded-3xl border bg-card p-3 active:cursor-grabbing hover:border-primary/50 transition-colors",
+          isBeingDeletedPreview 
+            ? "border-red-500 bg-red-500/20" 
+            : isApplied 
+              ? "border-blue-500/50" 
+              : isSaved 
+                ? "border-amber-500/50" 
+                : "border-border"
+        )}
+      >
+        <div className="flex items-start gap-2">
+          <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-foreground truncate flex-1">{title}</p>
+              {isApplied && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">
+                  Applied
+                </span>
+              )}
+              {isSaved && !isApplied && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
+                  Saved
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <Building2 className="h-3 w-3" />
+              <span className="truncate">{company}</span>
+            </p>
+            {location && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <MapPin className="h-3 w-3" />
+                <span className="truncate">{location}</span>
+              </p>
+            )}
+            {salary && (
+              <p className="text-xs text-emerald-400 mt-1">{salary}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {canChat && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onChat(cardData);
+                }}
+                className="text-primary hover:text-primary/80 transition-colors p-1 rounded hover:bg-primary/10"
+                title="Chat with employer"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {canChat && onVideoCall && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onVideoCall(cardData);
+                }}
+                className="text-emerald-500 hover:text-emerald-400 transition-colors p-1 rounded hover:bg-emerald-500/10"
+                title="Video call"
+              >
+                <Video className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {jobUrl && (
+              <a 
+                href={jobUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+};
+
+// ============================================
+// DROP INDICATOR
+// ============================================
+
+type DropIndicatorProps = {
+  beforeId: string | null;
+  column: string;
+};
+
+const DropIndicator = ({ beforeId, column }: DropIndicatorProps) => {
+  return (
+    <div
+      data-before={beforeId || "-1"}
+      data-column={column}
+      className="my-0.5 h-0.5 w-full bg-violet-400 opacity-0"
+    />
+  );
+};
+
+// ============================================
+// BURN BARREL (DELETE)
+// ============================================
+
+const DeleteDropZone = ({
+  setCards,
+  isDragging,
+  onHoverChange,
+}: {
+  setCards: Dispatch<SetStateAction<CardType[]>>;
+  isDragging: boolean;
+  onHoverChange?: (isOver: boolean) => void;
+}) => {
+  const [active, setActive] = useState(false);
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    setActive(true);
+    onHoverChange?.(true);
+  };
+
+  const handleDragLeave = () => {
+    setActive(false);
+    onHoverChange?.(false);
+  };
+
+  const handleDragEnd = (e: DragEvent) => {
+    const cardId = e.dataTransfer.getData("cardId");
+    setCards((pv) => pv.filter((c) => c.id !== cardId));
+    setActive(false);
+    onHoverChange?.(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ 
+        opacity: isDragging ? 1 : 0, 
+        y: isDragging ? 0 : 50,
+        pointerEvents: isDragging ? "auto" : "none"
+      }}
+      transition={{ duration: 0.2 }}
+      onDrop={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      className={cn(
+        "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center gap-2 px-6 py-3 rounded-full border transition-colors shadow-xl",
+        active
+          ? "border-red-500 bg-red-500/20 text-red-400 scale-110"
+          : "border-border bg-card/90 backdrop-blur-sm text-muted-foreground"
+      )}
+    >
+      {active ? (
+        <Flame className="h-5 w-5 animate-bounce" />
+      ) : (
+        <Trash2 className="h-5 w-5" />
+      )}
+      <span className="text-sm font-medium">
+        {active ? "Release to delete" : "Drop here to delete"}
+      </span>
+    </motion.div>
+  );
+};
+
+// ============================================
+// ADD CARD
+// ============================================
+
+type AddCardProps = {
+  column: ColumnType;
+  setCards: Dispatch<SetStateAction<CardType[]>>;
+};
+
+const AddCard = ({ column, setCards }: AddCardProps) => {
+  const [text, setText] = useState("");
+  const [company, setCompany] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!text.trim().length || !company.trim().length) return;
+
+    const newCard: CardType = {
+      column,
+      title: text.trim(),
+      company: company.trim(),
+      id: crypto.randomUUID(),
+    };
+
+    setCards((pv) => [...pv, newCard]);
+    setText("");
+    setCompany("");
+    setAdding(false);
+  };
+
+  return (
+    <>
+      {adding ? (
+        <motion.form layout onSubmit={handleSubmit} className="mt-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            autoFocus
+            placeholder="Job title..."
+            className="w-full rounded-full border border-violet-400 bg-violet-400/20 p-2 text-sm text-neutral-50 placeholder-violet-300 focus:outline-0 mb-2"
+          />
+          <input
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="Company..."
+            className="w-full rounded-full border border-violet-400 bg-violet-400/20 p-2 text-sm text-neutral-50 placeholder-violet-300 focus:outline-0"
+          />
+          <div className="mt-2 flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => setAdding(false)}
+              className="px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground rounded-full"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex items-center gap-1.5 rounded-full bg-neutral-50 px-3 py-1.5 text-xs text-neutral-950 transition-colors hover:bg-neutral-300"
+            >
+              <span>Add</span>
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+        </motion.form>
+      ) : (
+        <motion.button
+          layout
+          onClick={() => setAdding(true)}
+          className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <span>Add job</span>
+          <Plus className="h-3 w-3" />
+        </motion.button>
+      )}
+    </>
+  );
+};
+
+export { Column, Card, DropIndicator, DeleteDropZone, AddCard };

@@ -1,13 +1,17 @@
-# RPADataHub
+# EcomIQ-RPA — RPA & Web Scraping Platform for E-Commerce | 电商 RPA 智能工具集
 
 <div align="center">
 
-**基于 RPA + 工程化架构的规模化数据采集与运维平台**
+**RPA · Web Scraping · Playwright Automation · Desktop RPA (pywinauto+OCR)
+· ETL Pipeline · AI Dashboard — All-in-one e-commerce operations platform**
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
+[![RPA](https://img.shields.io/badge/RPA-Playwright%20|%20pywinauto-blue)]()
+[![Automation](https://img.shields.io/badge/Automation-Desktop%20|%20Web-green)]()
+[![Scraping](https://img.shields.io/badge/Web%20Scraping-10+%20Platforms-orange)]()
 [![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange.svg)](https://www.mysql.com/)
-[![Playwright](https://img.shields.io/badge/Playwright-latest-purple.svg)](https://playwright.dev/)
+[![Redis](https://img.shields.io/badge/Redis-7.0+-red.svg)](https://redis.io/)
 [![License](https://img.shields.io/badge/License-Internal-red.svg)]()
 
 </div>
@@ -16,364 +20,296 @@
 
 ## 📋 目录
 
-- [项目简介](#项目简介)
-- [核心架构](#核心架构)
-- [技术栈](#技术栈)
-- [项目结构](#项目结构)
-- [快速开始](#快速开始)
-- [功能模块](#功能模块)
-- [Admin 管理平台](#admin-管理平台)
-- [采集调度系统](#采集调度系统)
-- [数据治理](#数据治理)
-- [AI 智能运维](#ai-智能运维)
-- [部署指南](#部署指南)
+- [项目简介](#-项目简介)
+- [模块总览](#-模块总览)
+- [技术架构](#-技术架构)
+- [快速开始](#-快速开始)
+- [项目结构](#-项目结构)
+- [路由映射](#-路由映射)
+- [安全机制](#-安全机制)
+- [开发规范](#-开发规范)
+- [部署指南](#-部署指南)
+- [更新日志](#-更新日志)
 
 ---
 
-## 项目简介
+## 📖 项目简介
 
-RPADataHub 是一套面向跨境电商的**全链路数据采集与运维管理平台**，覆盖从数据采集、ETL 清洗、质量校验、DW 聚合到 BI 可视化的完整数据链路。
+EcomIQ-RPA 是一套面向跨境电商的 **RPA 数据采集与自动化运维平台**，
+整合了 **Playwright 浏览器自动化**、**Windows 桌面 RPA**（pywinauto + UIA + PaddleOCR）、
+竞品监控（Competitor Monitoring）、客户开发（Lead Generation）、ETL 数据管道和 AI 智能分析五大核心模块，
+提供统一认证、全局导航和一站式数据看板。
 
-**核心指标：**
+> **EcomIQ-RPA is a full-stack RPA & web scraping platform for e-commerce.
+> Playwright browser automation · Desktop RPA (pywinauto+OCR) · Competitor monitoring
+> · Lead generation · ETL pipeline · AI-powered dashboard. All-in-one.**
 
-| 指标 | 数值 |
-|------|------|
-| 覆盖平台 | 10+ (Amazon/Walmart/Shopee/TEMU/Sina...) |
-| 管理店铺 | 8+ |
-| 日均数据量 | 10,000+ 条 |
-| 采集成功率 | 99.5% |
-| 异常拦截率 | 90%+ |
+### 核心特性
+
+- ✅ **统一登录鉴权** — PBKDF2 密码哈希 + Session 持久化（7天）
+- ✅ **模块蓝图集成** — 四大子模块以 Flask Blueprint 挂载，独立可运行
+- ✅ **WebSocket 支持** — 原生 WS 协议，用于 YAML 执行器实时日志
+- ✅ **跨模块 API 兼容** — 三套独立 API 路径自动映射，零修改搭载
+- ✅ **安全加固** — SQL 参数化查询 · Session 安全 Cookie · 密码自动升级
+- ✅ **响应式布局** — Bootstrap 5 + 自定义暗色侧边栏 + 可折叠导航
+- ✅ **Windows 桌面自动化** — YAML 流程编排 + pywinauto/UIA/OCR/图像识别
 
 ---
 
-## 核心架构
+## 📦 模块总览
+
+| 模块 | 路由前缀 | 独立端口 | 说明 | 状态 |
+|:---|:---|:---|:---|:---|
+| 🏠 **EcomIQ-RPA Hub** | `/` | `5000` | 统一入口、登录鉴权、首页仪表盘 | 完整 |
+| 📡 **RPADataHub** | `/rpa/*` | `5100` | 数据采集与运维 · ETL · BI 看板 | 完整 |
+| 📊 **CompetitorWatch** | `/competitor/*` | `5100` | 竞品管理 · 竞价看板 · AI 报告 | 完整 |
+| 🎯 **LeadScraper** | `/leads/*` | `5000` | 客户开发 · 关键词采集 · 开发信 | 完整 |
+| 🎬 **VideoIQ** | `/video/*` | — | AI 视频内容分析 | 占位 |
+| 🤖 **AI Assistant** | `/ai` | — | 智能对话助手 | 占位 |
+
+各模块独立 README：[src/rpa/](src/rpa/README.md) · [src/competitor/](src/competitor/README.md) · [src/leads/](src/leads/README.md) · [src/main/](src/main/README.md)
+
+---
+
+## 🏗️ 技术架构
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                       Admin 管理平台 (Flask)                      │
-│  ETL记录 │ SQL巡检 │ BI分析 │ 经营看板 │ 任务管理 │ 采集监控    │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │ HTTP
-┌──────────────────────────────┼──────────────────────────────────┐
-│                    数据消费层 (Watchdog + ETL)                    │
-│  文件监听 → 路由匹配 → 维表校验 → ODS写入 → DW聚合 → 归档      │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-┌──────────────────────────────┼──────────────────────────────────┐
-│                     采集执行层 (Playwright)                       │
-│  Collector Registry → Task Runner → BaseCollector → 具体采集器  │
-│  MQ Consumer ← task_queue ← Admin 任务下发                       │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-┌──────────────────────────────┴──────────────────────────────────┐
-│                   数据存储层 (MySQL)                               │
-│  ODS层(贴源) → DW层(加工) → 监控表(运维) → 任务表(调度)        │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                  EcomIQ-RPA Hub (Flask :5000)                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────┐  ┌─────────┐  │
+│  │ RPADataHub   │  │Competitor    │  │ Lead     │  │VideoIQ +│  │
+│  │ (Blueprint)  │  │Watch (BP)    │  │Scraper(BP│  │AI Assist│  │
+│  └──────┬───────┘  └──────┬───────┘  └────┬─────┘  └────┬────┘  │
+│         │                 │               │             │        │
+│         └─────────────────┴───────────────┴─────────────┘        │
+│                                   │                               │
+│                    ┌──────────────┴──────────────┐                │
+│                    │  MySQL 8.0 (data 库)        │                │
+│                    │  Redis 7.0 (MQ, 可选)       │                │
+│                    └─────────────────────────────┘                │
+└──────────────────────────────────────────────────────────────────┘
 ```
-
----
-
-## 技术栈
 
 | 层级 | 技术 | 说明 |
-|------|------|------|
-| **采集层** | Playwright + 影刀 RPA | 双轨采集，覆盖页面+接口 |
-| **消费层** | Python Watchdog | 文件夹监听，自动触发 ETL |
-| **处理层** | Pandas + PyMySQL | 数据清洗、维表校验、幂等入库 |
-| **存储层** | MySQL 8.0 | ODS → DW → DM 三级分层 |
-| **调度层** | Worker + Redis List MQ | LPUSH/BRPOP 实时推送，DB 审计降级 |
-| **监控层** | Flask Admin + Chart.js | 可视化运维看板 |
-| **AI 层** | DeepSeek API + SQLite FTS5 | Function Calling + 3 Skills + RAG 知识库 |
+|:---|:---|:---|
+| **后端框架** | Python 3.10+ / Flask 3.0+ | Web 服务 + Blueprint 模块化管理 |
+| **前端** | Bootstrap 5.3 + Bootstrap Icons | 响应式布局 + 图标库 |
+| **浏览器自动化** | Playwright | 数据采集 + 竞品监控 |
+| **Win 自动化** | pywinauto + uiautomation + OpenCV + PaddleOCR | 桌面自动化 |
+| **数据库** | MySQL 8.0 + PyMySQL | 共享 data 库，ODS → DW 分层 |
+| **消息队列** | Redis Streams / DB 降级 | 任务调度 + 实时推送 |
+| **密码安全** | PBKDF2-HMAC-SHA256 + 随机盐 | 10万次迭代 |
+| **AI** | DeepSeek Chat API | 智能分析 + RAG 知识库 |
 
 ---
 
-## 项目结构
-
-```
-RPADataHub/
-│
-├── admin_server.py              # Flask Admin 管理平台 (15+ 页面)
-├── file_watcher.py              # 文件监听 + ETL 消费服务
-├── worker.py                    # 任务执行器 Agent (Redis MQ 消费)
-│
-├── config/
-│   └── settings.py              # 全局配置中心 (支持环境变量)
-│
-├── Skill/                        # AI 技能插件
-│   ├── rpa_ops_agent/            #   Agent 智能体
-│   ├── rpa_health_scanner/       #   健康巡检
-│   ├── rpa_task_summary/         #   任务日报
-│   ├── rpa_diagnose/             #   智能诊断
-│   └── rpa_rag_assistant/        #   RAG 知识库问答
-│       └── knowledge_base/       #   白皮书/运维手册/SQL规则
-│
-├── core/
-│   ├── db_operations.py         # 数据库操作层 (ODS/DW/连接池)
-│   ├── data_validator.py        # 数据校验引擎 (维表白名单/空文件/骤降)
-│   ├── alert_manager.py         # 分级告警 (P0/P1/P2 + 低频降频)
-│   ├── retry_manager.py         # 自愈重试 (指数退避 + 降级兜底)
-│   ├── checkpoint.py            # 断点续传 (PROCESSING → SUCCESS/FAILED)
-│   ├── error_classifier.py      # MySQL 错误 → 中文运维消息
-│   └── ai_agent.py              # DeepSeek AI 智能分析 Agent
-│
-├── routers/
-│   └── route_matcher.py         # 文件夹路由匹配 (Tier1: 路径, Tier2: 文件名)
-│
-├── templates/                   # Admin 前端模板 (Jinja2 + Bootstrap 5)
-│   ├── base.html                #    布局框架 + 侧边栏
-│   ├── login.html               #    登录页 (CareerCompass风格动画)
-│   ├── dashboard.html           #    ETL执行记录
-│   ├── monitor.html             #    SQL巡检 + AI分析
-│   ├── bi_dashboard.html        #    BI经营分析 (KPI+趋势+分布)
-│   ├── dashboard_data.html      #    经营看板 (6个模块)
-│   ├── tasks.html               #    任务管理 (CRUD + 启动)
-│   ├── collection_*.html        #    采集监控/执行明细/店铺健康
-│   ├── health_dashboard.html    #    健康总览
-│   ├── shops.html               #    店铺管理
-│   └── routes.html              #    路由配置
-│
-├── sql/
-│   ├── init_tables.sql          # 运维监控表 DDL
-│   ├── init_admin_tables.sql    # Admin 用户/监控/知识库表
-│   └── init_task_tables.sql     # 任务调度表
-│
-├── static/                      # 本地静态资源 (无CDN依赖)
-│   ├── bootstrap.min.css
-│   ├── bootstrap-icons.css
-│   └── chart.umd.js
-│
-├── playwright_collection_script/ # 采集脚本工程
-│   ├── main.py                  #   统一任务入口
-│   ├── collector_registry.py    #   采集器注册中心
-│   ├── worker.py                #   本机执行代理
-│   ├── task_runner.py           #   任务编排层
-│   ├── schemas/                 #   数据模型 (TaskConfig/Result/Log)
-│   ├── collectors/              #   采集器集合
-│   │   ├── base.py              #     BaseCollector 基类
-│   │   ├── sina_finance.py      #     新浪财经要闻采集
-│   │   ├── amazon_login_collector.py
-│   │   ├── aba_keyword_collector.py
-│   │   └── amazon_po_collector.py
-│   ├── runtime/                 #   运行时 (Context/Logger/Reporter)
-│   ├── mq/                      #   消息队列 (Consumer/Producer)
-│   ├── library/                 #   工具库
-│   └── amazon_login/            #   Amazon 登录模块 (现有)
-│
-├── tests/                        # 单元测试
-│   ├── test_error_classifier.py  #   MySQL错误分类器测试 (11项)
-│   └── test_data_validator.py    #   数据校验引擎测试 (17项)
-├── logger_config.py             # 结构化日志 (TraceLogger + trace_id)
-├── mq/
-│   └── redis_broker.py          # Redis MQ 代理 (生产/消费 + DB降级)
-├── .env.example                 # 环境变量模板
-├── start_all_services.bat       # Windows 一键启动脚本
-└── UNIVERSAL_DEV_STANDARDS.md   # 通用开发约束与架构准则
-```
-
----
-
-## 快速开始
+## 🚀 快速开始
 
 ### 环境要求
-- Python 3.10+ / MySQL 8.0+ / Redis (可选)
 
-### 1. 环境配置（推荐方式）
+- Python 3.10+
+- MySQL 8.0+ (localhost:3306)
+- Redis 7.0+ (可选，不配则降级数据库轮询)
+- Windows 10/11 (推荐)
 
-复制 `.env.example` 为 `.env`，填入真实值即可（`python-dotenv` 自动加载）：
+### 1. 安装依赖
 
 ```bash
-copy .env.example .env
-# 编辑 .env 填入你的真实密钥
+cd EcomIQ
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+playwright install chromium
 ```
 
-| 配置项 | 环境变量 | 说明 |
-|--------|---------|------|
-| MySQL 密码 | `RPA_DB_PASSWORD` | 数据库密码 |
-| MySQL 连接 | `RPA_DB_HOST` / `RPA_DB_PORT` / `RPA_DB_USER` / `RPA_DB_DATABASE` | 数据库连接信息 |
-| DeepSeek Key | `RPA_DEEPSEEK_API_KEY` | AI 功能必需 |
-| Redis 连接 | `RPA_REDIS_URL` | 格式 `redis://:password@host:6379`，不配则自动降级 DB 轮询 |
-| Bark 推送 | `RPA_BARK_URL` | 告警推送（可选） |
-| Flask 密钥 | `RPA_FLASK_SECRET_KEY` | 用于 Session 签名，生产环境务必修改 |
-| 文件路径 | `RPA_WATCH_FOLDER` / `RPA_ARCHIVE_FOLDER` / `RPA_LOG_DIR` | 数据目录 |
+### 2. 配置环境变量
 
-> 启动时如果看到 `[Config] 警告` 说明 `.env` 未配置或配置不完整。完整清单见 `.env.example`。
+编辑 `.env` 文件，填入数据库密码等配置。
 
-### 2. 初始化数据库
+### 3. 初始化数据库
+
 ```bash
-mysql -u root -p < sql/init_tables.sql
-mysql -u root -p < sql/init_admin_tables.sql
-mysql -u root -p < sql/init_task_tables.sql
+python src/competitor/sql/setup_db.py
 ```
 
-### 3. 启动服务
+### 4. 启动
+
+**纯 Web 模式：**
+
 ```bash
-start_all_services.bat           # Windows 一键启动
-python admin_server.py           # Admin -> http://localhost:5000
-python file_watcher.py           # 文件监听 + ETL
-python worker.py                 # 任务执行 Worker
-```
-默认管理员: `admin`，密码在 `sql/init_admin_tables.sql` 中配置。
-
-## 功能模块
-
-### Admin 管理平台 (18 个页面)
-
-| 模块 | 页面 | 功能 |
-|------|------|------|
-| **运维监控** | ETL执行记录 | 文件处理成功/失败日志 + 详情下钻 |
-| | SQL巡检 | 监控SQL模板管理 + 定时执行 + 告警处理 + **AI分析** |
-| | 采集图表 | 采集量/拦截量趋势图 (Grafana风格) |
-| | 健康总览 | 6 KPI + 链路状态 + 平台覆盖 |
-| **任务调度** | 任务管理 | 任务配置CRUD + 一键启动 + 执行历史 |
-| | 任务监控 | 任务状态看板 + 点击下钻店铺明细 |
-| | 执行明细 | 按UUID/店铺/日期筛选 + 异常高亮 |
-| | 店铺健康 | 7天色块矩阵 (绿/红/灰) + 异常标记 |
-| **数据分析** | BI经营分析 | GMV/订单/广告/退款 KPI + 趋势图 + 平台饼图 + 下钻 |
-| | 经营看板 ×6 | 订单/广告/销量/折扣/费用/协议 数据明细 + 筛选导出 |
-| **AI 智能运维** | AI 运营中心 | Agent对话 + 4个Skill(巡检/日报/诊断/RAG) + 历史记录 |
-| **基础管理** | 店铺管理 | 店铺维表 CRUD + 筛选导出 |
-| | 路由配置 | 文件夹→ODS表 映射管理 |
-| | 成员管理 | 用户列表 + 角色权限分配 |
-| | 权限审批 | 权限申请审批 + 通过/拒绝 |
-
-### 采集调度系统
-
-```
-任务配置 (task_config)
-    ↓ Admin 点击"启动"
-任务队列 (task_queue)  ← PENDING
-    ↓ Worker BRPOP 实时消费
-任务执行 (BaseCollector.run)
-    ↓ 逐店铺采集
-采集记录 (task_record)  ← 单店铺明细
-    ↓ 汇总
-任务汇总 (task_summary)  ← 成功率统计
+start.bat
+# 访问 http://localhost:5000
+# 账号: admin / RPA@admin2026
 ```
 
-### 数据治理流水线
+**全栈模式（含 Worker + Redis + FileWatcher）：**
+
+```bash
+start_services.bat
+```
+
+
+---
+
+## 📁 项目结构
 
 ```
-Excel文件 → 文件夹路由 → L0空文件检查 → 维表白名单校验
-    → 通用ODS写入(MySQL Schema兜底) → DW加工SQL(配置驱动)
-    → 异常分类 → 分级告警(P0/P1/P2) → 断点续传 → 文件归档
+EcomIQ/
+├── README.md                       # 项目总览（本文档）
+├── DEVELOPMENT_STANDARDS.md        # 开发规范与约束
+├── requirements.txt                # 统一 Python 依赖
+├── .gitignore                      # Git 忽略规则
+├── .env                            # 环境变量配置（不入库）
+├── start.bat                       # Web 模式一键启动
+├── start_services.bat              # 全栈模式一键启动
+├── docs/                           # 设计文档
+│   ├── 整套RPA解决方案.docx
+│   ├── 架构整改方案.md
+│   └── 智能客服模块_功能设计文档.md
+│
+└── src/
+    ├── main/                       # 🏠 EcomIQ Hub（统一入口）
+    │   ├── app.py                  # 主应用入口
+    │   ├── README.md
+    │   ├── start.bat / start_services.bat
+    │   ├── templates/ / static/ / sql/
+    │
+    ├── rpa/                        # 📡 RPADataHub
+    │   ├── blueprint.py            # 蓝图封装
+    │   ├── admin_server.py         # 独立 Admin (5100)
+    │   ├── worker.py               # Worker 执行器
+    │   ├── file_watcher.py         # 文件监听
+    │   ├── win_automation/         # Win 桌面自动化
+    │   ├── templates/ / tests/
+    │   └── README.md
+    │
+    ├── competitor/                 # 📊 CompetitorWatch
+    │   ├── blueprint.py
+    │   ├── app.py / worker.py
+    │   ├── sql/ / templates/ / tests/
+    │   └── README.md
+    │
+    └── leads/                      # 🎯 LeadScraper
+        ├── blueprint.py            # 蓝图封装
+        ├── app.py                  # 独立入口
+        ├── scraper.py              # 采集引擎
+        ├── campaign.py             # 开发信模块
+        ├── templates/ / tests/
+        └── README.md
 ```
 
 ---
 
-## AI 智能运维
+## 🗺️ 路由映射
 
-### Skill 插件架构 (4 Skills + 1 Agent)
+### 主应用路由
 
-| Skill | 功能 | 触发方式 |
-|-------|------|---------|
-| `rpa-health-scanner` | 流程健康度巡检，红黄绿灯评分 | "扫描系统健康" |
-| `rpa-task-summary` | 任务执行日报，AI 自然语言总结 | "今天任务情况" |
-| `rpa-diagnose` | 智能根因诊断，输出方案+影响+置信度 | "诊断登录失败" |
-| `rpa-rag-assistant` | 私有 RAG 知识库，白皮书+运维手册+SQL规则问答 | "RPA超时怎么排查" |
-| `RPAOps-Agent` | 自然语言意图识别，自动路由到对应 Skill | 任意对话 |
+| 路径 | 功能 |
+|:---|:---|
+| `/` | 首页仪表盘 |
+| `/login` / `/logout` | 统一登录 / 登出 |
+| `/settings` | 系统设置 |
+| `/video/*` | VideoIQ (占位) |
+| `/ai` | AI 智能助手 (占位) |
+| `/api/health` | 健康检查 |
 
-### RAG 知识库
+### 子模块路由
 
-```
-文档(.md) → 分块(500字) → SQLite FTS5 全文索引
-    → 用户提问 → 关键词检索(top 5 chunks)
-    → 拼接 Prompt → DeepSeek 生成回答
-```
-
-知识库来源：白皮书摘要 + 运维手册(5类异常SOP) + SQL校验规则(10+条) + Skill技术文档
-
-### 异常分析流程
-
-```
-异常触发 → 上下文聚合(历史+店铺+数据量)
-         → 知识库检索(精确+模糊匹配)
-         → DeepSeek API 分析(根因+方案+影响+通报)
-         → 结果落库 → 业务方推送
-```
-
-### 使用方式
-
-1. Admin → SQL巡检 → 编辑告警 → 填写错误原因
-2. 点击 `🤖 AI分析` → 3-5秒返回分析结果
-3. 根因自动填入"错误原因"，方案填入"解决方案"
-4. 点击"标记已处理"保存
-
-### 预置知识库
-
-| 异常类型 | 典型模式 | 解决方案 |
-|---------|---------|---------|
-| 登录失败 | cookie expired | 重新登录刷新Cookie |
-| 元素定位失败 | selector not found | 更新选择器配置 |
-| 数据为空 | 0 rows returned | 标记为无数据 |
-| 网络超时 | connection timeout | 切换代理重试 |
-| DB异常 | connection refused | 检查MySQL服务 |
+| 模块 | 主要路由 |
+|:---|:---|
+| **RPADataHub** | `/rpa/tasks` `/rpa/bi` `/rpa/monitor` `/rpa/winauto` `/rpa/ops` |
+| **CompetitorWatch** | `/competitor/manage` `/competitor/dashboard` `/competitor/reports` |
+| **LeadScraper** | `/leads/` `/leads/export` `/leads/api/upload` `/leads/api/start` |
 
 ---
 
-## 部署指南
+## 🛡️ 安全机制
 
-### Windows 开机自启
-
-```bash
-# Win+R → shell:startup
-# 将 start_admin_silent.vbs 快捷方式放入该文件夹
-```
-
-### 生产环境建议
-
-1. **Web Server**: 使用 `waitress` 或 `gunicorn` 替代 Flask 开发服务器
-2. **数据库**: 配置连接池，建议 `pool_size=20`
-3. **日志**: 配置 RotatingFileHandler，单文件 50MB
-4. **监控**: 接入 Grafana，SQL 看板已预置
-5. **安全**: 修改默认密码，关闭 Debug 模式
-
-```bash
-# 生产启动示例
-waitress-serve --host=0.0.0.0 --port=5000 admin_server:app
-```
+| 措施 | 实现 |
+|:---|:---|
+| **密码哈希** | PBKDF2-HMAC-SHA256 + 16字节盐 + 10万迭代 |
+| **旧密码升级** | 旧版 SHA256 登录时自动升级为 PBKDF2 |
+| **SQL 注入防护** | 参数化查询 + 白名单排序 + 表名校验 |
+| **Session 安全** | HTTPOnly + SameSite=Lax + 7天持久化 |
+| **路径遍历防护** | `..` 检测 + 文件名清洗 |
+| **文件上传校验** | 扩展名白名单 + 文件大小限制 |
+| **XSS 防护** | Jinja2 自动转义 + 客户端 escapeHtml() |
+| **敏感数据隔离** | `.env` + `settings.local.json` 不入库 |
 
 ---
 
-## 开发规范
+## 📐 开发规范
 
-本项目遵循 `UNIVERSAL_DEV_STANDARDS.md` 中的架构准则（MUST/SHOULD/MAY 三级约束）。
+本项目遵循 **[DEVELOPMENT_STANDARDS.md](DEVELOPMENT_STANDARDS.md)**，采用 MUST/SHOULD/MAY 三级约束体系。
+
+### 核心原则
+
+1. **安全优先**：密钥不入库、输入必校验、路径防遍历
+2. **模块分离**：路由、业务逻辑、IO 操作严格分离
+3. **可测试性**：纯函数优先，全局状态封装
+4. **一致性**：API 统一返回 `{success, data, error}` 格式
+5. **UTF-8**：所有源码、配置、文档统一 UTF-8 编码
 
 ### 运行测试
+
 ```bash
-python -m unittest discover tests -v     # 运行所有测试
+# RPADataHub
+cd src/rpa && python -m pytest tests/ -v
+
+# CompetitorWatch
+cd src/competitor && python -m pytest tests/ -v
+
+# LeadScraper
+cd src/leads && python -m pytest tests/ -v
 ```
 
-### 新增采集器
+---
 
-1. 在 `collectors/` 下创建 `xxx_collector.py`，继承 `BaseCollector`
-2. 实现 `run(config: TaskConfig) -> TaskSummary` 方法
-3. 在 `collector_registry.py` 中注册
-4. Admin → 任务管理 → 新增任务 → 配置采集器名
+## 🚢 部署指南
 
-### 新增经营看板
+### 生产环境
 
-1. 在 `admin_server.py` 的 `DASHBOARD_CONFIGS` 中添加配置
-2. 侧边栏自动展开，模板复用 `dashboard_data.html`
+```bash
+# 1. 关闭 debug 模式
+# 2. 使用 waitress
+pip install waitress
+waitress-serve --port=5000 src.main.app:app
 
-### 新增监控 SQL
+# 3. 安全配置 .env:
+ECOMIQ_RPA_SECRET_KEY=<随机长字符串>
+SESSION_COOKIE_SECURE=True
 
-1. Admin → SQL巡检 → 新增监控SQL
-2. 填写名称、SQL、负责人、Cron 表达式
+# 4. 后台服务
+python src/rpa/worker.py &
+python src/rpa/file_watcher.py &
+```
+
+### Nginx 反向代理
+
+```nginx
+server {
+    listen 80;
+    server_name ecomiq-rpa.example.com;
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
 
 ---
 
-## 作者
+## 📝 更新日志
 
-**Jackson** — 架构设计、核心开发、全链路实现
-
----
-
-## License
-
-本项目仅供内部使用。核心技术方案参见《基于 RPA+工程化架构的规模化数据采集与运维实践白皮书》。
+| 版本 | 日期 | 变更 |
+|:---|:---|:---|
+| v1.2 | 2026-06-27 | 根目录文档完善：README / .gitignore / requirements.txt / 开发规范 |
+| v1.1 | 2026-06-25 | PBKDF2 密码升级、SQL 参数化、Session 安全加固、折叠侧边栏 |
+| v1.0 | 2026-06-24 | 四大模块蓝图集成、统一登录、首页仪表盘、YAML 智能执行器 |
 
 ---
 
-<div align="center">
-  <sub>自动化的终点不是「替代人」，而是「让人回归创造」</sub>
-</div>
+## 📄 License
+
+Internal use only. All rights reserved.

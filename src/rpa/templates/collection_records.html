@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}采集执行明细 - RPA Admin{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="mb-0"><i class="bi bi-list-ul"></i> 采集执行明细</h4><button class="btn btn-outline-secondary btn-sm" onclick="load()"><i class="bi bi-arrow-clockwise"></i> 刷新</button></div>
+<div class="card mb-3"><div class="card-body py-2"><div class="row g-2">
+  <div class="col-md-3"><input class="form-control form-control-sm" id="fUUID" placeholder="任务UUID"></div>
+  <div class="col-md-3"><input class="form-control form-control-sm" id="fShop" placeholder="店铺名称"></div>
+  <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="fDate"></div>
+  <div class="col-md-1"><button class="btn btn-dark btn-sm" onclick="load()">查询</button></div>
+</div></div></div>
+<div class="card"><div class="table-responsive" style="max-height:500px;overflow-y:auto"><table class="table table-sm table-hover mb-0"><thead><tr><th>任务UUID</th><th>店铺</th><th>平台</th><th>脚本</th><th>ODS表</th><th>结果</th><th>行数</th><th>耗时</th><th>错误</th><th>时间</th></tr></thead><tbody id="body"><tr><td colspan="10" class="text-center text-muted py-3">加载中...</td></tr></tbody></table></div>
+  <div class="card-footer d-flex justify-content-between"><small class="text-muted" id="info"></small><div class="btn-group btn-group-sm" id="btns"></div></div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+// Default to today
+if(!fDate.value) fDate.value = new Date().toISOString().split('T')[0];
+let page=1;
+function load(p){ page=p||page; fetch('/api/collection/records?page='+page+'&per_page=10&task_uuid='+fUUID.value+'&shop='+fShop.value+'&date='+fDate.value).then(r=>r.json()).then(d=>{ let h=''; d.records.forEach(r=>{ let b=r.collect_result=='SUCCESS'?'success':r.collect_result=='FAILED'?'danger':'secondary'; h+=`<tr style="${r.collect_result!='SUCCESS'?'background:#fef2f2':''}"><td><code>${(r.task_uuid||'').substring(0,12)}</code></td><td>${r.shop_name}</td><td>${r.platform}</td><td>${r.script_name}</td><td>${r.ods_table}</td><td><span class="badge bg-${b}">${r.collect_result}</span></td><td>${r.row_count}</td><td>${r.duration_sec||0}s</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.error_message||'-'}</td><td>${r.create_time||''}</td></tr>`; }); document.getElementById('body').innerHTML=h||'<tr><td colspan="10" class="text-center text-muted">暂无</td></tr>'; document.getElementById('info').textContent='共 '+(d.total||0)+' 条'; let btns='',pages=Math.ceil((d.total||0)/20); for(let i=Math.max(1,page-2);i<=Math.min(pages,page+2);i++) btns+=`<button class="btn btn-sm ${i===page?'btn-dark':'btn-outline-secondary'}" onclick="load(${i})">${i}</button>`; document.getElementById('btns').innerHTML=btns; }); }
+load();
+</script>
+{% endblock %}

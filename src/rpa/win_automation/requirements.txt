@@ -1,0 +1,38 @@
+# Windows 桌面自动化依赖包
+# ============================
+
+# === Windows UI 自动化（核心）===
+pywinauto>=0.6.8              # Win32/UIA 控件级自动化
+uiautomation>=2.0.18         # 微软原生 UIAutomation 封装
+
+# === 鼠标键盘模拟 ===
+pyautogui>=0.9.54
+
+# === 图像识别 ===
+opencv-python>=4.8.0          # 模板匹配、图像处理
+Pillow>=10.0.0                # 截图、图像处理
+
+# === OCR 文字识别 ===
+# 方案A: PaddleOCR (推荐，中文优秀)
+paddlepaddle>=2.6.0           # PaddlePaddle 推理框架（CPU版用 paddlepaddle，GPU版用 paddlepaddle-gpu）
+paddleocr>=2.7.0              # OCR 引擎
+
+# 方案B: Tesseract (轻量备选，需单独安装 tesseract-ocr.exe)
+# pytesseract>=0.3.10         # Tesseract Python 封装
+# 另需安装: https://github.com/UB-Mannheim/tesseract/wiki
+
+# === 流程编排 ===
+PyYAML>=6.0                   # YAML 流程配置解析
+
+# === 数据导出 ===
+openpyxl>=3.0.0               # Excel 写入
+
+# === 剪贴板 ===
+pyperclip>=1.8.2              # 跨平台剪贴板操作
+
+# === 系统监控 ===
+psutil>=5.9.0                 # 进程管理
+
+# === 调试工具 ===
+# inspect  - Python 内置，控件树调试
+# ctypes   - Python 内置，Win32 API 调用

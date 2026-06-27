@@ -1,0 +1,35 @@
+name: "混合流程 — 浏览器采集 + OCR提取 + Excel导出"
+description: |
+  演示跨模块协调：浏览器打开网页 → 截图 → OCR提取文字 → 导出Excel
+  适用于：网页数据无法直接解析时的 OCR 兜底方案
+steps:
+  - browser_open:
+      url: "https://www.example.com"
+      wait_until: "networkidle"
+    _name: "打开网页"
+
+  - browser_wait:
+      seconds: 3
+    _name: "等待页面加载"
+
+  - browser_screenshot:
+      path: "data/screenshots/page_snapshot.png"
+    _name: "截图保存"
+
+  - ocr_read:
+      region: [0, 0, 1920, 400]
+    _name: "OCR读取顶部区域文字"
+
+  - set_var:
+      name: "page_text"
+      value: "{{ocr_read}}"
+    _name: "保存到变量"
+
+  - export_csv:
+      data_key: "page_text"
+      path: "data/output/page_ocr_result.csv"
+    _name: "导出CSV"
+
+  - print:
+      message: "混合流程完成！数据已导出"
+    _name: "输出日志"

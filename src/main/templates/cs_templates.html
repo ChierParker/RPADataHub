@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% block title %}回复模板管理 — 智能客服{% endblock %}
+{% block page_title %}💬 智能客服 — 回复模板管理{% endblock %}
+
+{% block extra_head %}
+<style>
+    .template-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 14px;
+    }
+
+    .template-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        transition: box-shadow 0.15s;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .template-card:hover {
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .template-card.inactive {
+        opacity: 0.5;
+    }
+
+    .template-card .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .template-card .tpl-name {
+        font-weight: 600;
+        font-size: 14px;
+        color: #1e293b;
+    }
+
+    .template-card .tpl-meta {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .template-card .tpl-content {
+        font-size: 12px;
+        color: #64748b;
+        line-height: 1.5;
+        flex: 1;
+        max-height: 100px;
+        overflow: hidden;
+        white-space: pre-wrap;
+        margin-bottom: 10px;
+    }
+
+    .template-card .card-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .template-card .card-actions button {
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+
+    .category-tabs {
+        margin-bottom: 14px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .category-tabs .tab-btn {
+        font-size: 12px;
+        padding: 4px 14px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.12s;
+    }
+
+    .category-tabs .tab-btn:hover {
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+
+    .category-tabs .tab-btn.active {
+        background: #3b82f6;
+        color: #fff;
+        border-color: #3b82f6;
+    }
+
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 1050;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-backdrop.show {
+        display: flex;
+    }
+
+    .modal-card {
+        background: #fff;
+        border-radius: 12px;
+        width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-card .modal-hd {
+        padding: 14px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-card .modal-bd {
+        padding: 16px 20px;
+    }
+
+    .modal-card .modal-ft {
+        padding: 12px 20px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 style="margin:0"><i class="bi bi-file-earmark-text me-2"></i>回复模板</h5>
+        <button class="btn btn-primary btn-sm" onclick="openEditor()"><i class="bi bi-plus-lg"></i> 新建模板</button>
+    </div>
+
+    <div class="category-tabs" id="categoryTabs">
+        <button class="tab-btn active" onclick="filterByCategory('')">全部</button>
+        <button class="tab-btn" onclick="filterByCategory('return')">退货退款</button>
+        <button class="tab-btn" onclick="filterByCategory('logistics')">物流查询</button>
+        <button class="tab-btn" onclick="filterByCategory('inquiry')">产品咨询</button>
+        <button class="tab-btn" onclick="filterByCategory('complaint')">投诉处理</button>
+        <button class="tab-btn" onclick="filterByCategory('custom')">自定义</button>
+    </div>
+
+    <div class="template-grid" id="templateGrid">
+        <div style="text-align:center;padding:40px;grid-column:1/-1;color:#94a3b8">
+            <span class="spinner-border spinner-border-sm me-2"></span>加载中...
+        </div>
+    </div>
+</div>
+
+<!-- 编辑模态框 -->
+<div class="modal-backdrop" id="editorModal">
+    <div class="modal-card">
+        <div class="modal-hd">
+            <h6 style="margin:0" id="editorTitle">新建模板</h6>
+            <button class="btn-close" onclick="closeEditor()"></button>
+        </div>
+        <div class="modal-bd">
+            <input type="hidden" id="editId">
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label" style="font-size:12px;margin-bottom:2px">模板名称 <span
+                            style="color:red">*</span></label>
+                    <input class="form-control form-control-sm" id="editName" placeholder="如：退货确认模板">
+                </div>
+                <div class="col-3">
+                    <label class="form-label" style="font-size:12px;margin-bottom:2px">分类</label>
+                    <select class="form-select form-select-sm" id="editCategory">
+                        <option value="return">退货退款</option>
+                        <option value="logistics">物流查询</option>
+                        <option value="inquiry">产品咨询</option>
+                        <option value="complaint">投诉处理</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div class="col-3">
+                    <label class="form-label" style="font-size:12px;margin-bottom:2px">语言</label>
+                    <select class="form-select form-select-sm" id="editLanguage">
+                        <option value="en">英文</option>
+                        <option value="zh">中文</option>
+                        <option value="ja">日文</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-2">
+                <label class="form-label" style="font-size:12px;margin-bottom:2px">适用平台</label>
+                <input class="form-control form-control-sm" id="editPlatform"
+                    placeholder="逗号分隔，如 Amazon,Walmart,Shopee。留空=全部">
+            </div>
+            <div class="mb-2">
+                <label class="form-label" style="font-size:12px;margin-bottom:2px">模板内容 <span
+                        style="color:red">*</span></label>
+                <textarea class="form-control form-control-sm" id="editContent" rows="12"
+                    style="font-family:monospace;font-size:12px" placeholder="输入模板内容，使用 {{变量名}} 插入变量..."></textarea>
+                <div style="font-size:10px;color:#94a3b8;margin-top:4px">
+                    可用变量: {{"{{customer_name}}"}} {{"{{order_id}}"}} {{"{{product_name}}"}} {{"{{order_amount}}"}}
+                    {{"{{shop_name}}"}} {{"{{agent_name}}"}} {{"{{current_date}}"}}
+                </div>
+            </div>
+        </div>
+        <div class="modal-ft">
+            <button class="btn btn-secondary btn-sm" onclick="closeEditor()">取消</button>
+            <button class="btn btn-primary btn-sm" onclick="saveTemplate()">💾 保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let allTemplates = [];
+    let currentFilter = '';
+
+    // ========== 加载模板列表 ==========
+    function loadTemplates() {
+        fetch('/api/cs/templates')
+            .then(r => r.json())
+            .then(d => {
+                if (!d.success) { showToast(d.error, 'error'); return; }
+                allTemplates = d.data.records || [];
+                renderTemplates();
+            })
+            .catch(e => showToast('加载失败: ' + e.message, 'error'));
+    }
+
+    function filterByCategory(cat) {
+        currentFilter = cat;
+        document.querySelectorAll('#categoryTabs .tab-btn').forEach(b => b.classList.remove('active'));
+        const target = document.querySelector(`#categoryTabs .tab-btn[onclick*="${cat}"]`);
+        if (target) target.classList.add('active');
+        renderTemplates();
+    }
+
+    const CAT_LABELS = { return: '退货退款', logistics: '物流查询', inquiry: '产品咨询', complaint: '投诉处理', custom: '自定义' };
+    const LANG_LABELS = { en: '英文', zh: '中文', ja: '日文' };
+
+    function renderTemplates() {
+        const grid = document.getElementById('templateGrid');
+        const filtered = currentFilter ? allTemplates.filter(t => t.category === currentFilter) : allTemplates;
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;grid-column:1/-1;color:#94a3b8">暂无模板，点击右上角"新建模板"</div>';
+            return;
+        }
+        grid.innerHTML = filtered.map(t => {
+            const inactive = !t.is_active ? ' inactive' : '';
+            const statusBadge = t.is_active ? '<span style="color:#16a34a;font-size:11px">● 启用</span>' : '<span style="color:#94a3b8;font-size:11px">○ 停用</span>';
+            return `
+            <div class="template-card${inactive}">
+                <div class="card-top">
+                    <span class="tpl-name">📝 ${escapeHtml(t.name)}</span>
+                    ${statusBadge}
+                </div>
+                <div class="tpl-meta">
+                    <span>${CAT_LABELS[t.category] || t.category}</span>
+                    <span>·</span>
+                    <span>${LANG_LABELS[t.language] || t.language}</span>
+                    ${t.platform ? '<span>·</span><span>' + escapeHtml(t.platform) + '</span>' : ''}
+                    <span>·</span>
+                    <span>使用 ${t.usage_count || 0} 次</span>
+                </div>
+                <div class="tpl-content">${escapeHtml(t.content || '').substring(0, 200)}</div>
+                <div class="card-actions">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="openEditor(${t.id})">✏️ 编辑</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="toggleTemplate(${t.id})">${t.is_active ? '⏸ 停用' : '▶ 启用'}</button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteTemplate(${t.id}, '${escapeHtml(t.name)}')">🗑 删除</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ========== 编辑器 ==========
+    function openEditor(id) {
+        const modal = document.getElementById('editorModal');
+        document.getElementById('editId').value = '';
+        document.getElementById('editorTitle').textContent = '新建模板';
+        document.getElementById('editName').value = '';
+        document.getElementById('editCategory').value = 'return';
+        document.getElementById('editLanguage').value = 'en';
+        document.getElementById('editPlatform').value = '';
+        document.getElementById('editContent').value = '';
+
+        if (id) {
+            const tpl = allTemplates.find(t => t.id === id);
+            if (tpl) {
+                document.getElementById('editId').value = tpl.id;
+                document.getElementById('editorTitle').textContent = '编辑模板';
+                document.getElementById('editName').value = tpl.name || '';
+                document.getElementById('editCategory').value = tpl.category || 'custom';
+                document.getElementById('editLanguage').value = tpl.language || 'en';
+                document.getElementById('editPlatform').value = tpl.platform || '';
+                document.getElementById('editContent').value = tpl.content || '';
+            }
+        }
+        modal.classList.add('show');
+    }
+
+    function closeEditor() {
+        document.getElementById('editorModal').classList.remove('show');
+    }
+
+    function saveTemplate() {
+        const id = document.getElementById('editId').value;
+        const name = document.getElementById('editName').value.trim();
+        const content = document.getElementById('editContent').value.trim();
+        if (!name || !content) { showToast('名称和内容不能为空', 'warning'); return; }
+
+        const payload = {
+            name, content,
+            category: document.getElementById('editCategory').value,
+            language: document.getElementById('editLanguage').value,
+            platform: document.getElementById('editPlatform').value.trim(),
+        };
+
+        const url = id ? '/api/cs/templates/update/' + id : '/api/cs/templates/create';
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    showToast(id ? '模板已更新' : '模板已创建');
+                    closeEditor();
+                    loadTemplates();
+                } else {
+                    showToast(d.error, 'error');
+                }
+            })
+            .catch(e => showToast('保存失败: ' + e.message, 'error'));
+    }
+
+    // ========== 停用/启用 ==========
+    function toggleTemplate(id) {
+        fetch('/api/cs/templates/toggle/' + id, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { showToast('状态已切换'); loadTemplates(); }
+                else showToast(d.error, 'error');
+            });
+    }
+
+    // ========== 删除 ==========
+    function deleteTemplate(id, name) {
+        if (!confirm('确定删除模板 "' + name + '" 吗？此操作不可撤销。')) return;
+        fetch('/api/cs/templates/delete/' + id, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { showToast('模板已删除'); loadTemplates(); }
+                else showToast(d.error, 'error');
+            });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
+    }
+
+    // ========== 点击模态框外部关闭 ==========
+    document.getElementById('editorModal').addEventListener('click', function (e) {
+        if (e.target === this) closeEditor();
+    });
+
+    loadTemplates();
+</script>
+{% endblock %}

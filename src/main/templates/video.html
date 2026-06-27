@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}视频分析 — VideoIQ{% endblock %}
+{% block page_title %}🎬 VideoIQ — AI视频内容分析{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <a href="{{ url_for('main.video_analyze') }}" class="card text-decoration-none"
+                style="border-radius:12px;border:1px solid #e2e8f0;transition:box-shadow 0.2s;">
+                <div class="card-body text-center py-4">
+                    <div style="font-size:36px;margin-bottom:8px;">🎬</div>
+                    <h6 style="color:#1e293b;">视频分析</h6>
+                    <p style="color:#64748b;font-size:12px;margin:0;">上传视频进行AI分析</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{{ url_for('main.video_scripts') }}" class="card text-decoration-none"
+                style="border-radius:12px;border:1px solid #e2e8f0;transition:box-shadow 0.2s;">
+                <div class="card-body text-center py-4">
+                    <div style="font-size:36px;margin-bottom:8px;">📝</div>
+                    <h6 style="color:#1e293b;">脚本生成</h6>
+                    <p style="color:#64748b;font-size:12px;margin:0;">AI辅助生成带货脚本</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{{ url_for('main.video_history') }}" class="card text-decoration-none"
+                style="border-radius:12px;border:1px solid #e2e8f0;transition:box-shadow 0.2s;">
+                <div class="card-body text-center py-4">
+                    <div style="font-size:36px;margin-bottom:8px;">📋</div>
+                    <h6 style="color:#1e293b;">分析历史</h6>
+                    <p style="color:#64748b;font-size:12px;margin:0;">查看过往分析记录</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+name: "新建流程"
+steps:
+  - open_app:
+      path: "notepad.exe"
+      backend: "uia"
+  - wait:
+      seconds: 1
+  - input:
+      value: "Hello EcomIQ"
+      target: "Edit"
+  - send_keys:
+      keys: "^s"

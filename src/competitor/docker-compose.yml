@@ -1,0 +1,120 @@
+﻿version: "3.8"
+
+# ============================================================
+# CompetitorWatch Docker Compose
+# One-command deployment: docker-compose up -d
+# ============================================================
+
+services:
+  # ---- MySQL 8.0 ----
+  mysql:
+    image: mysql:8.0
+    container_name: competitorwatch-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-changeme}
+      MYSQL_DATABASE: ${DB_NAME:-ecomiq}
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init_tables.sql:/docker-entrypoint-initdb.d/01_init_tables.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-changeme}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - competitorwatch-net
+
+  # ---- Redis 7 ----
+  redis:
+    image: redis:7-alpine
+    container_name: competitorwatch-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - competitorwatch-net
+
+  # ---- Flask Admin (app.py) ----
+  admin:
+    build: .
+    container_name: competitorwatch-admin
+    restart: unless-stopped
+    command: python app.py
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-changeme}
+      - DB_NAME=${DB_NAME:-ecomiq}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-dev-key-change-in-prod}
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5100
+    ports:
+      - "5100:5100"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - competitorwatch-net
+
+  # ---- Worker (worker.py) ----
+  worker:
+    build: .
+    container_name: competitorwatch-worker
+    restart: unless-stopped
+    command: python worker.py --region both
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-changeme}
+      - DB_NAME=${DB_NAME:-ecomiq}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+    networks:
+      - competitorwatch-net
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  competitorwatch-net:
+    driver: bridge

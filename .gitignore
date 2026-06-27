@@ -1,51 +1,90 @@
+# ============================================================
+# EcomIQ — 统一 .gitignore
+# ============================================================
+
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 *.so
 *.egg-info/
-dist/
-build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Virtual Environment
 .venv/
 venv/
 
-# IDE
-.idea/
+# Dependencies
+node_modules/
+
+# IDE / Editor
 .vscode/
+.idea/
 *.swp
 *.swo
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
 
-# Sensitive Data
+# Secrets & Local Config
 .env
+.env.local
+.env.*.local
 *.key
 *.pem
+settings.local.json
 amazon_cookies.json
 Login_log/
 
-# Database (runtime)
+# Runtime Data (per-module)
+logs/
+output/
+input/
+debug/
+uploads/
+tmp/
+temp/
+cache/
+
+# User / Session Data (may contain cookies & sensitive info)
+profiles/
+sessions/
+cookies/
+browser/
+*.local.*
+*.private.*
+
+# Database (runtime SQLite)
 *.db
 *.sqlite
 *.sqlite3
 
-# Logs
-logs/
-*.log
-
-# Output
+# RPA Specific
 rpa_output/
 rpa_archive/
 rpa_fallback/
-output/
 artifacts/
 
-# OS
-.DS_Store
-Thumbs.db
+# Build Artifacts
+build/
+dist/
+*.spec
+*.exe
+.next/
+out/
 
-# Project Temp
+# Generated / Temp
 _gen_*.py
 _fix_*.py
 _build_*.py
 start_admin_silent.vbs
 *.bak
+
+# Playwright
+playwright-report/
+test-results/

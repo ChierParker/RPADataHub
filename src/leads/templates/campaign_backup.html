@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>开发信 Campaign — LeadScraper</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/bootstrap-icons.min.css') }}" rel="stylesheet">
+    <style>
+        :root { --primary: #2563eb; --success: #16a34a; --warning: #f59e0b; --danger: #dc2626; }
+        body { background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .app-header { background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); color: white; padding: 0.75rem 0; }
+        .app-header h1 { font-size: 1.2rem; margin: 0; }
+        .app-header .btn { font-size: 0.85rem; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 1rem; }
+        .card-header { background: white; border-bottom: 2px solid #f1f5f9; font-weight: 600; font-size: 0.9rem; }
+        .lead-row { cursor: pointer; transition: background 0.15s; font-size: 0.85rem; }
+        .lead-row:hover { background: #f8fafc; }
+        .lead-row.expanded { background: #eff6ff; }
+        .lead-detail { display: none; background: #f8fafc; }
+        .lead-detail.show { display: table-row; }
+        .lead-detail td { padding: 1rem 1.5rem; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; font-size: 0.85rem; }
+        .detail-grid .label { color: #64748b; }
+        .badge-email { background: #dbeafe; color: #1d4ed8; font-size: 0.75rem; }
+        .badge-has-email { font-size: 0.65rem; }
+        .send-progress { height: 6px; border-radius: 3px; }
+        .send-log { max-height: 300px; overflow-y: auto; font-size: 0.8rem; }
+        .send-log .log-item { padding: 0.35rem 0.75rem; border-bottom: 1px solid #f1f5f9; }
+        .send-log .log-success { border-left: 3px solid var(--success); }
+        .send-log .log-fail { border-left: 3px solid var(--danger); }
+        .template-preview { background: #f8fafc; border-radius: 8px; padding: 1rem; max-height: 200px; overflow-y: auto; font-size: 0.85rem; white-space: pre-wrap; }
+        .stats-bar { display: flex; gap: 1.5rem; }
+        .stats-bar .stat { text-align: center; }
+        .stats-bar .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .stats-bar .stat-lbl { font-size: 0.75rem; color: #64748b; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="app-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="bi bi-envelope-paper"></i> 开发信 Campaign</h1>
+                <small class="opacity-75">基于采集结果，批量发送开发信</small>
+            </div>
+            <div>
+                <a href="/" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-left"></i> 返回采集</a>
+                <button class="btn btn-outline-light btn-sm ms-1" onclick="loadLeads(true)"><i class="bi bi-arrow-clockwise"></i> 刷新数据</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container py-3">
+    <!-- Import Section -->
+    <div class="card mb-3" id="importZone">
+        <div class="card-body d-flex align-items-center gap-3 py-2">
+            <span class="fw-bold text-nowrap"><i class="bi bi-file-earmark-arrow-up me-1"></i>导入数据:</span>
+            <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(event)">
+            <button class="btn btn-outline-primary btn-sm" onclick="document.getElementById('importFileInput').click()">
+                <i class="bi bi-folder2-open"></i> 选择 Excel/CSV
+            </button>
+            <span class="text-muted small">直接导入客户名单进入开发信流程，无需先采集</span>
+            <span id="importStatus" class="small"></span>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- ==================== LEFT: Leads Table ==================== -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-people me-2"></i>线索列表 <span id="leadCount" class="text-muted"></span></span>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="filterKeyword" onchange="filterLeads()" style="width:auto;">
+                            <option value="">全部关键词</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleSelectAll()">全选/取消</button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height:60vh;overflow-y:auto;">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th width="40"><input type="checkbox" id="selectAll" onchange="onSelectAllChange()"></th>
+                                <th>公司 / 邮箱</th>
+                                <th width="90">关键词</th>
+                                <th width="30"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadTableBody">
+                            <tr><td colspan="4" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox d-block mb-2" style="font-size:2rem;"></i>
+                                暂无数据，请先完成采集或点击"刷新数据"
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== RIGHT: Template + Send ==================== -->
+        <div class="col-lg-5">
+            <!-- Template Editor -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-file-text me-2"></i>邮件模板</span>
+                    <select class="form-select form-select-sm" id="templateKeyword" onchange="loadTemplate()" style="width:auto;">
+                        <option value="">选择关键词...</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <label class="form-label small fw-bold">邮件主题</label>
+                    <input type="text" class="form-control form-control-sm mb-2" id="emailSubject"
+                           placeholder="支持变量: {keyword} {company} {contact} {email}">
+                    <label class="form-label small fw-bold">邮件正文</label>
+                    <textarea class="form-control form-control-sm mb-2" id="emailBody" rows="8"
+                              placeholder="支持变量: {keyword} {company} {contact} {email} {phone} {website}"></textarea>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary btn-sm" onclick="saveTemplate()">
+                            <i class="bi bi-check-lg"></i> 保存模板
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="resetTemplate()">
+                            <i class="bi bi-arrow-clockwise"></i> 重置为默认
+                        </button>
+                    </div>
+                    <div class="mt-2 small text-muted">
+                        可用变量: <code>{keyword}</code> <code>{company}</code> <code>{contact}</code>
+                        <code>{email}</code> <code>{phone}</code> <code>{website}</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Send Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-send me-2"></i>发送控制
+                </div>
+                <div class="card-body">
+                    <div class="stats-bar mb-3">
+                        <div class="stat"><div class="stat-val" id="statSelected">0</div><div class="stat-lbl">已选线索</div></div>
+                        <div class="stat"><div class="stat-val" id="statSent">0</div><div class="stat-lbl">已发送</div></div>
+                        <div class="stat"><div class="stat-val" id="statFailed">0</div><div class="stat-lbl">失败</div></div>
+                    </div>
+                    <div class="progress send-progress mb-2" id="sendProgressBar">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
+                    </div>
+                    <div class="d-flex gap-2 mb-2">
+                        <button class="btn btn-success btn-sm" id="btnSend" onclick="startSend()">
+                            <i class="bi bi-send"></i> 发送开发信
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm d-none" id="btnStopSend" onclick="stopSend()">
+                            <i class="bi bi-stop-fill"></i> 停止
+                        </button>
+                    </div>
+                    <div id="sendStatus" class="small text-muted"></div>
+                </div>
+            </div>
+
+            <!-- Send Logs -->
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-list-ul me-2"></i>发送日志
+                </div>
+                <div class="send-log" id="sendLog">
+                    <div class="text-center text-muted py-3 small">暂无发送记录</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+<script>
+// CDN 回退：若本地文件加载失败则从 CDN 获取
+if (typeof bootstrap === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"><\/script>');
+}
+</script>
+<script>
+// ============================================================
+// State
+// ============================================================
+let leads = [];
+let sendPollTimer = null;
+
+// ============================================================
+// API Helper (with timeout)
+// ============================================================
+async function api(url, options = {}, timeout = 15000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeout);
+    try {
+        const r = await fetch(url, { ...options, signal: ctrl.signal });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return await r.json();
+    } finally { clearTimeout(t); }
+}
+
+// ============================================================
+// Init
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    loadLeads();
+    loadKeywords();
+    loadTemplates();
+});
+
+// ============================================================
+// Import
+// ============================================================
+function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    importFile(file);
+}
+
+async function importFile(file) {
+    const statusEl = document.getElementById('importStatus');
+    statusEl.innerHTML = '<span class="text-info"><i class="bi bi-hourglass-split"></i> 导入中...</span>';
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    try {
+        const data = await api('/api/campaign/import', { method: 'POST', body: fd }, 30000);
+        if (!data.success) {
+            statusEl.innerHTML = `<span class="text-danger">${data.error}</span>`;
+            return;
+        }
+        statusEl.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> 导入 ${data.total} 条线索</span>`;
+        // Reload leads and keywords
+        await loadLeads();
+        await loadKeywords();
+    } catch(e) {
+        statusEl.innerHTML = `<span class="text-danger">导入失败: ${e.message}</span>`;
+    }
+}
+
+// ============================================================
+// Leads
+// ============================================================
+async function loadLeads(forceReload = false) {
+    try {
+        const url = '/api/campaign/leads' + (forceReload ? '?force=1' : '');
+        const data = await api(url);
+        if (!data.success) return;
+        leads = data.leads;
+        document.getElementById('leadCount').textContent = `(${leads.length} 条有邮箱)`;
+        populateKeywordFilter();
+        renderLeadTable();
+    } catch(e) { console.error(e); }
+}
+
+function populateKeywordFilter() {
+    const kw = [...new Set(leads.map(l => l.sheet_name))];
+    const sel = document.getElementById('filterKeyword');
+    sel.innerHTML = '<option value="">全部关键词</option>' + kw.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    // Also update template keyword selector
+    const tplSel = document.getElementById('templateKeyword');
+    tplSel.innerHTML = '<option value="">选择关键词...</option>' + kw.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+}
+
+function filterLeads() {
+    renderLeadTable();
+}
+
+function renderLeadTable() {
+    const filter = document.getElementById('filterKeyword').value;
+    const filtered = filter ? leads.filter(l => l.sheet_name === filter) : leads;
+    const tbody = document.getElementById('leadTableBody');
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">无匹配线索</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map((l, i) => `
+        <tr class="lead-row" id="row-${l.id}">
+            <td><input type="checkbox" class="lead-check" data-id="${l.id}" onchange="updateStats()" onclick="event.stopPropagation()"></td>
+            <td onclick="toggleDetail('${l.id}')">
+                <strong>${escapeHtml(l.company || '(无公司名)')}</strong><br>
+                <span class="badge badge-email">${escapeHtml(l.email)}</span>
+            </td>
+            <td onclick="toggleDetail('${l.id}')"><span class="badge bg-secondary badge-has-email">${escapeHtml(l.sheet_name)}</span></td>
+            <td onclick="toggleDetail('${l.id}')"><i class="bi bi-chevron-down text-muted" id="icon-${l.id}"></i></td>
+        </tr>
+        <tr class="lead-detail" id="detail-${l.id}">
+            <td colspan="4">
+                <div class="detail-grid">
+                    <div><span class="label">公司:</span> ${escapeHtml(l.company) || '-'}</div>
+                    <div><span class="label">联系人:</span> ${escapeHtml(l.contact) || '-'}</div>
+                    <div><span class="label">邮箱:</span> ${escapeHtml(l.email)}</div>
+                    <div><span class="label">电话:</span> ${escapeHtml(l.phone) || '-'}</div>
+                    <div><span class="label">WhatsApp:</span> ${escapeHtml(l.whatsapp) || '-'}</div>
+                    <div><span class="label">网站:</span> <a href="${escapeHtml(l.website)}" target="_blank">${escapeHtml(l.website) || '-'}</a></div>
+                    <div style="grid-column:1/-1"><span class="label">来源:</span> <a href="${escapeHtml(l.source_url)}" target="_blank" class="text-truncate d-inline-block" style="max-width:100%;">${escapeHtml(l.source_url) || '-'}</a></div>
+                    <div><span class="label">采集时间:</span> ${escapeHtml(l.collected_at) || '-'}</div>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    updateStats();
+}
+
+function toggleDetail(id) {
+    const detail = document.getElementById(`detail-${id}`);
+    const icon = document.getElementById(`icon-${id}`);
+    const row = document.getElementById(`row-${id}`);
+    if (detail && icon) {
+        const isOpen = detail.classList.contains('show');
+        if (isOpen) {
+            detail.classList.remove('show');
+            row.classList.remove('expanded');
+            icon.className = 'bi bi-chevron-down text-muted';
+        } else {
+            detail.classList.add('show');
+            row.classList.add('expanded');
+            icon.className = 'bi bi-chevron-up text-primary';
+        }
+    }
+}
+
+function toggleSelectAll() {
+    const checks = document.querySelectorAll('.lead-check');
+    const allChecked = [...checks].every(c => c.checked);
+    checks.forEach(c => c.checked = !allChecked);
+    document.getElementById('selectAll').checked = !allChecked;
+    updateStats();
+}
+
+function onSelectAllChange() {
+    const checked = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.lead-check').forEach(c => c.checked = checked);
+    updateStats();
+}
+
+function updateStats() {
+    const checked = document.querySelectorAll('.lead-check:checked').length;
+    document.getElementById('statSelected').textContent = checked;
+    document.getElementById('selectAll').checked = checked > 0 &&
+        checked === document.querySelectorAll('.lead-check').length;
+}
+
+// ============================================================
+// Templates
+// ============================================================
+async function loadKeywords() {
+    try {
+        const data = await api('/api/campaign/keywords');
+        if (data.success && data.keywords.length > 0) {
+            const sel = document.getElementById('templateKeyword');
+            sel.innerHTML = '<option value="">选择关键词...</option>' +
+                data.keywords.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function loadTemplates() {
+    // Just populate the dropdown, actual template loads on select
+}
+
+async function loadTemplate(useDefault = false) {
+    const keyword = document.getElementById('templateKeyword').value;
+    if (!keyword) {
+        document.getElementById('emailSubject').value = '';
+        document.getElementById('emailBody').value = '';
+        return;
+    }
+    try {
+        const param = useDefault ? '&default=1' : '';
+        const data = await api(`/api/campaign/template?keyword=${encodeURIComponent(keyword)}${param}`);
+        if (data.success && data.template) {
+            document.getElementById('emailSubject').value = data.template.subject;
+            document.getElementById('emailBody').value = data.template.body;
+        }
+    } catch(e) { console.error(e); }
+}
+
+function resetTemplate() {
+    // 重置为系统默认模板
+    loadTemplate(true);
+}
+
+async function saveTemplate() {
+    const keyword = document.getElementById('templateKeyword').value;
+    const subject = document.getElementById('emailSubject').value.trim();
+    const body = document.getElementById('emailBody').value.trim();
+    if (!keyword) { alert('请先选择关键词'); return; }
+    if (!subject) { alert('请输入邮件主题'); return; }
+    if (!body) { alert('请输入邮件正文'); return; }
+
+    try {
+        const data = await api('/api/campaign/template', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ keyword, subject, body })
+        });
+        if (data.success) {
+            // Brief flash
+            const btn = document.querySelector('#card-header .btn-primary');
+            alert('模板已保存!');
+        }
+    } catch(e) { alert('保存失败: ' + e.message); }
+}
+
+// ============================================================
+// Send
+// ============================================================
+async function startSend() {
+    const keyword = document.getElementById('templateKeyword').value;
+    if (!keyword) { alert('请先在模板区选择关键词'); return; }
+
+    const leadIds = [...document.querySelectorAll('.lead-check:checked')].map(c => c.dataset.id);
+    if (leadIds.length === 0) { alert('请至少勾选一条有邮箱的线索'); return; }
+
+    try {
+        const data = await api('/api/campaign/send', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ lead_ids: leadIds, keyword })
+        });
+        if (!data.success) { alert(data.error); return; }
+
+        document.getElementById('btnSend').classList.add('d-none');
+        document.getElementById('btnStopSend').classList.remove('d-none');
+        document.getElementById('sendStatus').innerHTML =
+            '<span class="text-info"><i class="bi bi-hourglass-split"></i> 正在发送...</span>';
+        startSendPolling();
+    } catch(e) { alert('发送失败: ' + e.message); }
+}
+
+async function stopSend() {
+    await api('/api/campaign/send/stop', { method: 'POST' });
+    stopSendPolling();
+    document.getElementById('btnSend').classList.remove('d-none');
+    document.getElementById('btnStopSend').classList.add('d-none');
+    document.getElementById('sendStatus').innerHTML =
+        '<span class="text-warning">发送已停止</span>';
+}
+
+function startSendPolling() {
+    if (sendPollTimer) clearInterval(sendPollTimer);
+    sendPollTimer = setInterval(pollSendProgress, 800);
+}
+
+function stopSendPolling() {
+    if (sendPollTimer) { clearInterval(sendPollTimer); sendPollTimer = null; }
+}
+
+async function pollSendProgress() {
+    try {
+        const data = await api('/api/campaign/send/progress');
+        const p = data.progress;
+        if (!p) return;
+
+        document.getElementById('statSent').textContent = p.sent;
+        document.getElementById('statFailed').textContent = p.failed;
+
+        const pct = p.total > 0 ? Math.round((p.sent + p.failed) / p.total * 100) : 0;
+        document.querySelector('#sendProgressBar .progress-bar').style.width = pct + '%';
+
+        if (p.current_recipient) {
+            document.getElementById('sendStatus').innerHTML =
+                `<span class="text-info">正在发送至: ${escapeHtml(p.current_recipient)}</span>`;
+        }
+
+        // Render logs
+        const logDiv = document.getElementById('sendLog');
+        if (p.logs && p.logs.length > 0) {
+            logDiv.innerHTML = [...p.logs].reverse().map(log => `
+                <div class="log-item ${log.success ? 'log-success' : 'log-fail'}">
+                    <span class="text-muted">${log.time}</span>
+                    <strong>${escapeHtml(log.email)}</strong>
+                    <span class="${log.success ? 'text-success' : 'text-danger'}">${log.message}</span>
+                    <div class="text-muted small">${escapeHtml(log.subject)}</div>
+                </div>
+            `).join('');
+        }
+
+        if (p.status === 'completed') {
+            stopSendPolling();
+            document.getElementById('btnSend').classList.remove('d-none');
+            document.getElementById('btnStopSend').classList.add('d-none');
+            document.getElementById('sendStatus').innerHTML =
+                `<span class="text-success"><i class="bi bi-check-circle"></i> 发送完成: ${p.sent} 成功 / ${p.failed} 失败</span>`;
+            document.querySelector('#sendProgressBar .progress-bar').classList.remove('progress-bar-animated');
+            loadLeads(); // Refresh leads
+        }
+    } catch(e) { console.error(e); }
+}
+
+// ============================================================
+// Utilities
+// ============================================================
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+}
+</script>
+
+</body>
+</html>

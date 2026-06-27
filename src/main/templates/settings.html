@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}系统设置 — EcomIQ{% endblock %}
+{% block page_title %}⚙️ 系统设置{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div style="max-width:600px;margin:20px auto;">
+        <div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:24px;margin-bottom:16px;">
+            <h6 style="color:#1e293b;margin-bottom:16px;"><i class="bi bi-people me-2"></i>用户管理</h6>
+            <p style="color:#64748b;font-size:13px;">管理平台用户账号、角色和权限分配。</p>
+            <a href="/rpa/members" class="btn btn-sm btn-outline-secondary">进入用户管理 →</a>
+        </div>
+        <div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:24px;margin-bottom:16px;">
+            <h6 style="color:#1e293b;margin-bottom:16px;"><i class="bi bi-server me-2"></i>环境配置</h6>
+            <p style="color:#64748b;font-size:13px;">数据库连接、Redis、AI API密钥等系统环境变量配置。</p>
+            <button class="btn btn-sm btn-outline-secondary" disabled>功能开发中</button>
+        </div>
+        <div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:24px;">
+            <h6 style="color:#1e293b;margin-bottom:16px;"><i class="bi bi-journal-text me-2"></i>日志查看</h6>
+            <p style="color:#64748b;font-size:13px;">查看系统运行日志、错误日志和操作审计记录。</p>
+            <button class="btn btn-sm btn-outline-secondary" disabled>功能开发中</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

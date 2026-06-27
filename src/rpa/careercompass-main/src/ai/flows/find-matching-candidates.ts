@@ -1,0 +1,129 @@
+"use server";
+
+/**
+ * @fileOverview Finds candidates whose skills match a given opportunity.
+ *
+ * - findMatchingCandidates - A function that finds matching candidates for an opportunity.
+ * - FindMatchingCandidatesInput - The input type for the findMatchingCandidates function.
+ * - FindMatchingCandidatesOutput - The return type for the findMatchingCandidates function.
+ */
+
+import { ai } from "@/ai/genkit";
+import { z } from "genkit";
+import { adminDb } from "@/lib/firebase-admin";
+import { requireServerRole } from "@/lib/server-auth";
+
+const FindMatchingCandidatesInputSchema = z.object({
+  opportunityId: z
+    .string()
+    .describe("The ID of the opportunity to match against."),
+});
+export type FindMatchingCandidatesInput = z.infer<
+  typeof FindMatchingCandidatesInputSchema
+>;
+
+const CandidateSchema = z.object({
+  uid: z.string(),
+  displayName: z.string(),
+  email: z.string(),
+  matchingSkills: z.array(z.string()),
+  matchScore: z
+    .number()
+    .describe("Percentage of required skills matched (0-100)"),
+});
+
+const FindMatchingCandidatesOutputSchema = z.object({
+  candidates: z
+    .array(CandidateSchema)
+    .describe(
+      "A list of candidates who match the opportunity, ranked by match score."
+    ),
+});
+export type FindMatchingCandidatesOutput = z.infer<
+  typeof FindMatchingCandidatesOutputSchema
+>;
+
+export async function findMatchingCandidates(
+  input: FindMatchingCandidatesInput
+): Promise<FindMatchingCandidatesOutput> {
+  await requireServerRole("employer");
+  return findMatchingCandidatesFlow(input);
+}
+
+const findMatchingCandidatesFlow = ai.defineFlow(
+  {
+    name: "findMatchingCandidatesFlow",
+    inputSchema: FindMatchingCandidatesInputSchema,
+    outputSchema: FindMatchingCandidatesOutputSchema,
+  },
+  async ({ opportunityId }) => {
+    const user = await requireServerRole("employer");
+    if (!adminDb) {
+      throw new Error("Authentication service unavailable");
+    }
+
+    // 1. Fetch the opportunity details
+    const oppDocSnap = await adminDb.collection("opportunities").doc(opportunityId).get();
+
+    if (!oppDocSnap.exists) {
+      throw new Error(`Opportunity with ID ${opportunityId} not found.`);
+    }
+
+    const opportunity = oppDocSnap.data() as Record<string, any>;
+    if (opportunity.employerId !== user.uid) {
+      throw new Error("Forbidden");
+    }
+    const requiredSkills = new Set(
+      (opportunity.skills || "")
+        .split(",")
+        .map((s: string) => s.trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    if (requiredSkills.size === 0) {
+      return { candidates: [] };
+    }
+
+    // 2. Fetch all employees
+    const usersSnapshot = await adminDb
+      .collection("users")
+      .where("role", "==", "employee")
+      .get();
+
+    const matchingCandidates: z.infer<typeof CandidateSchema>[] = [];
+
+    // 3. Find matches and calculate match score
+    for (const userDoc of usersSnapshot.docs) {
+      const user = userDoc.data();
+      const userSkills = new Set(
+        (user.skills || "")
+          .split(",")
+          .map((s: string) => s.trim().toLowerCase())
+          .filter(Boolean)
+      );
+
+      const commonSkills = [...userSkills].filter((skill) =>
+        requiredSkills.has(skill)
+      ) as string[];
+      const matchScore =
+        requiredSkills.size > 0
+          ? Math.round((commonSkills.length / requiredSkills.size) * 100)
+          : 0;
+
+      if (commonSkills.length > 0) {
+        matchingCandidates.push({
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+          matchingSkills: commonSkills,
+          matchScore,
+        });
+      }
+    }
+
+    // Sort candidates by matchScore descending
+    matchingCandidates.sort((a, b) => b.matchScore - a.matchScore);
+
+    return { candidates: matchingCandidates };
+  }
+);

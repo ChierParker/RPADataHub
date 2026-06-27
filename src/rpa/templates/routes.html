@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}路由配置 - RPA Admin{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-signpost-2"></i> 路由配置</h4>
+    <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#routeModal" onclick="clearForm()">
+        <i class="bi bi-plus-lg"></i> 新增路由
+    </button>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead><tr>
+                <th>ID</th><th>文件夹路径</th><th>ODS表</th><th>DW表</th><th>DW加工SQL</th><th>状态</th><th>操作</th>
+            </tr></thead>
+            <tbody>
+            {% for r in routes %}
+            <tr>
+                <td>{{ r.id }}</td>
+                <td><code>{{ r.path_pattern }}</code></td>
+                <td>{{ r.target_ods_table }}</td>
+                <td>{{ r.target_dw_table or '-' }}</td>
+                <td>
+                    {% if r.has_dw_sql == 'Y' %}
+                    <span class="badge bg-success">已配置</span>
+                    {% else %}
+                    <span class="badge bg-secondary">未配置</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.is_active %}
+                    <span class="badge bg-success">启用</span>
+                    {% else %}
+                    <span class="badge bg-secondary">停用</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="editRouteById({{ r.id }})" title="编辑">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="delRoute({{ r.id }})" title="删除">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-4">暂无路由配置</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3 small">
+    <i class="bi bi-info-circle"></i>
+    <strong>工作原理：</strong>文件监听器检测到新文件后，根据文件所在的<strong>文件夹路径</strong>匹配路由。
+    例如：文件在 <code>agreement/2026-06-09/xxx.xlsx</code> → 匹配 <code>path_pattern='agreement'</code> → ODS=<code>ods_agreement_raw</code>。
+    <br>DW加工SQL 由数据开发工程师编写，使用 <code>{ods_table}</code> 占位符替代实际ODS表名。
+</div>
+
+<!-- 编辑 Modal -->
+<div class="modal fade" id="routeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="routeModalTitle">新增路由</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <input type="hidden" id="routeId">
+            <div class="row mb-3">
+                <div class="col-4"><label class="form-label">文件夹路径 <span class="text-danger">*</span></label><input class="form-control" id="routePattern" placeholder="如：agreement"><small class="text-muted">文件路径包含此关键词即命中</small></div>
+                <div class="col-4"><label class="form-label">ODS表名 <span class="text-danger">*</span></label><input class="form-control" id="routeODS" placeholder="如：ods_agreement_raw"></div>
+                <div class="col-4"><label class="form-label">DW表名</label><input class="form-control" id="routeDW" placeholder="如：dw_agreement_daily"></div>
+            </div>
+            <div class="mb-3"><label class="form-label">DW加工SQL</label>
+                <textarea class="form-control sql-editor" id="routeSQL" placeholder="INSERT INTO dw_xxx (...) SELECT ... FROM {ods_table} ... GROUP BY ... ON DUPLICATE KEY UPDATE ..."></textarea>
+                <small class="text-muted">使用 <code>{ods_table}</code> 占位符，运行时自动替换为实际ODS表名。留空则不执行DW加工。</small>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="routeActive" checked>
+                <label class="form-check-label">启用</label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button class="btn btn-dark" onclick="saveRoute()">保存</button>
+        </div>
+    </div></div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function editRouteById(id) {
+    fetch('/api/route/'+id+'/data')
+        .then(r=>r.json())
+        .then(r=>{
+            document.getElementById('routeId').value=r.id;
+            document.getElementById('routeModalTitle').textContent='编辑路由: '+r.path_pattern;
+            document.getElementById('routePattern').value=r.path_pattern;
+            document.getElementById('routeODS').value=r.target_ods_table;
+            document.getElementById('routeDW').value=r.target_dw_table||'';
+            document.getElementById('routeSQL').value=r.dw_transform_sql||'';
+            document.getElementById('routeActive').checked=r.is_active;
+            new bootstrap.Modal(document.getElementById('routeModal')).show();
+        }).catch(err=>showToast('加载失败: '+err.message,'error'));
+}
+function clearForm() {
+    document.getElementById('routeId').value = '';
+    document.getElementById('routeModalTitle').textContent = '新增路由';
+    ['routePattern','routeODS','routeDW','routeSQL'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('routeActive').checked = true;
+}
+
+function editRoute(r) {
+    document.getElementById('routeId').value = r.id;
+    document.getElementById('routeModalTitle').textContent = '编辑路由: ' + r.path_pattern;
+    document.getElementById('routePattern').value = r.path_pattern;
+    document.getElementById('routeODS').value = r.target_ods_table;
+    document.getElementById('routeDW').value = r.target_dw_table || '';
+    document.getElementById('routeSQL').value = r.dw_transform_sql || '';
+    document.getElementById('routeActive').checked = r.is_active;
+    new bootstrap.Modal(document.getElementById('routeModal')).show();
+}
+
+function saveRoute() {
+    const data = {
+        id: document.getElementById('routeId').value || null,
+        path_pattern: document.getElementById('routePattern').value,
+        target_ods_table: document.getElementById('routeODS').value,
+        target_dw_table: document.getElementById('routeDW').value,
+        dw_transform_sql: document.getElementById('routeSQL').value,
+        is_active: document.getElementById('routeActive').checked ? 1 : 0,
+    };
+    if (!data.path_pattern || !data.target_ods_table) return showToast('文件夹路径和ODS表名不能为空', 'error');
+    fetch('/api/route', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+        .then(r => r.json())
+        .then(d => { if(d.success) { showToast('保存成功'); location.reload(); } else showToast(d.error,'error'); });
+}
+
+function delRoute(id) {
+    if (!confirm('确定删除此路由？删除后对应文件夹的文件将无法被消费。')) return;
+    fetch('/api/route/'+id, {method:'DELETE'})
+        .then(r => r.json())
+        .then(d => { if(d.success) { showToast('已删除'); location.reload(); } });
+}
+</script>
+{% endblock %}

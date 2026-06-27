@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 报告 — CompetitorWatch</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/"
+                style="border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 12px;font-size:13px;"><i
+                    class="bi bi-house-door me-1"></i>首页</a>
+            <span class="navbar-brand ms-3" style="font-weight:700;letter-spacing:-0.3px;"><i
+                    class="bi bi-eye me-1"></i>CompetitorWatch</span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="/competitor/manage">竞品管理</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/competitor/dashboard">竞价看板</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/competitor/reports">AI 报告</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4><i class="bi bi-robot"></i> AI 分析报告</h4>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadReports()">
+                <i class="bi bi-arrow-repeat"></i> 刷新
+            </button>
+        </div>
+
+        <!-- 筛选栏 -->
+        <div class="card mb-3">
+            <div class="card-body py-2">
+                <div class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <select id="filterCompetitor" class="form-select form-select-sm" style="width:200px;"
+                            onchange="loadReports()">
+                            <option value="">全部竞品</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <select id="filterType" class="form-select form-select-sm" onchange="loadReports()">
+                            <option value="">全部类型</option>
+                            <option value="daily">日报</option>
+                            <option value="weekly">周报</option>
+                            <option value="anomaly">异常报告</option>
+                        </select>
+                    </div>
+                    <div class="col-auto ms-auto">
+                        <button class="btn btn-sm btn-success" onclick="generateReport()">
+                            <i class="bi bi-magic"></i> 立即生成报告
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 报告列表 + 详情 双栏布局 -->
+        <div class="row g-3">
+            <!-- 左侧：报告列表 -->
+            <div class="col-md-4">
+                <div class="card" style="max-height: 75vh;">
+                    <div class="card-header">
+                        <i class="bi bi-file-text"></i> 报告列表
+                    </div>
+                    <div class="list-group list-group-flush" id="reportList"
+                        style="overflow-y: auto; max-height: 65vh;">
+                        <div class="list-group-item text-center text-muted py-4">
+                            <div class="spinner-border spinner-border-sm me-2"></div>加载中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：报告详情 -->
+            <div class="col-md-8">
+                <div class="card" style="max-height: 75vh;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-file-earmark-text"></i> 报告详情</span>
+                        <span id="reportMeta" class="text-muted small"></span>
+                    </div>
+                    <div class="card-body" id="reportContent" style="overflow-y: auto; max-height: 65vh;">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-arrow-left-circle" style="font-size: 3rem;"></i>
+                            <p class="mt-2">请从左侧列表选择一份报告查看</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 生成报告模态框 -->
+    <div class="modal fade" id="generateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-magic"></i> 生成 AI 分析报告</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择竞品</label>
+                        <select id="genCompetitorId" class="form-select">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">报告类型</label>
+                        <select id="genReportType" class="form-select">
+                            <option value="daily">日报（今日数据分析）</option>
+                            <option value="weekly">周报（本周趋势研判）</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">分析日期</label>
+                        <input type="date" id="genReportDate" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-success" onclick="doGenerateReport()" id="genBtn">
+                        <i class="bi bi-magic"></i> 生成
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE = '/competitor/api/competitor';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCompetitorFilters();
+            loadReports();
+        });
+
+        // ============================================================
+        // 加载数据
+        // ============================================================
+        async function loadCompetitorFilters() {
+            try {
+                const resp = await fetch(`${API_BASE}/list?`);
+                const json = await resp.json();
+                if (json.success && json.data) {
+                    const filterSelect = document.getElementById('filterCompetitor');
+                    const genSelect = document.getElementById('genCompetitorId');
+                    json.data.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.id;
+                        opt.textContent = `[${item.platform}] ${item.competitor_name}`;
+                        filterSelect.appendChild(opt);
+                        genSelect.appendChild(opt.cloneNode(true));
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadReports() {
+            const listEl = document.getElementById('reportList');
+            const competitorId = document.getElementById('filterCompetitor').value;
+            const reportType = document.getElementById('filterType').value;
+
+            listEl.innerHTML = '<div class="list-group-item text-center text-muted py-4">' +
+                '<div class="spinner-border spinner-border-sm me-2"></div>加载中...</div>';
+
+            try {
+                let url = `${API_BASE}/reports?`;
+                if (competitorId) url += `competitor_id=${competitorId}&`;
+                if (reportType) url += `type=${reportType}&`;
+
+                const resp = await fetch(url);
+                const json = await resp.json();
+
+                if (!json.success) throw new Error(json.error || '加载失败');
+
+                const reports = json.data || [];
+                if (reports.length === 0) {
+                    listEl.innerHTML = '<div class="list-group-item text-center text-muted py-4">' +
+                        '<i class="bi bi-inbox"></i> 暂无报告</div>';
+                    return;
+                }
+
+                listEl.innerHTML = reports.map(r => `
+                <a href="#" class="list-group-item list-group-item-action"
+                   onclick="loadReportDetail(${r.id}); return false;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-${reportTypeColor(r.report_type)} me-1">
+                                ${reportTypeLabel(r.report_type)}
+                            </span>
+                            <strong>${escapeHtml(r.competitor_name || '未知')}</strong>
+                        </div>
+                        <small class="text-muted">${r.report_date || '-'}</small>
+                    </div>
+                    <div class="small text-muted mt-1">
+                        ${r.summary ? escapeHtml(r.summary.substring(0, 60)) + '...' : '（无摘要）'}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        ${r.alert_level === 'critical'
+                        ? '<span class="badge bg-danger">严重</span>'
+                        : r.alert_level === 'warning'
+                            ? '<span class="badge bg-warning text-dark">警告</span>'
+                            : '<span class="badge bg-info">信息</span>'}
+                        <small class="text-muted">
+                            ${r.is_sent ? '<i class="bi bi-check-circle text-success"></i> 已推送' : ''}
+                        </small>
+                    </div>
+                </a>
+            `).join('');
+
+            } catch (err) {
+                listEl.innerHTML = `<div class="list-group-item text-center text-danger py-4">
+                <i class="bi bi-exclamation-triangle"></i> ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        async function loadReportDetail(reportId) {
+            const contentEl = document.getElementById('reportContent');
+            const metaEl = document.getElementById('reportMeta');
+
+            contentEl.innerHTML = '<div class="text-center text-muted py-3">' +
+                '<div class="spinner-border spinner-border-sm"></div> 加载中...</div>';
+
+            try {
+                const resp = await fetch(`${API_BASE}/report_detail?id=${reportId}`);
+                const json = await resp.json();
+
+                if (!json.success) throw new Error(json.error || '加载失败');
+
+                const report = json.data;
+                metaEl.textContent = `${report.competitor_name} · ${report.report_date} · ${reportTypeLabel(report.report_type)}`;
+
+                // 渲染 Markdown 格式的报告内容（简单处理）
+                const content = report.content || '';
+                const html = simpleMarkdownToHtml(content);
+                contentEl.innerHTML = html;
+
+            } catch (err) {
+                contentEl.innerHTML = `<div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        // ============================================================
+        // 生成报告
+        // ============================================================
+        function generateReport() {
+            // 加载竞品列表到生成模态框
+            const genSelect = document.getElementById('genCompetitorId');
+            if (genSelect.options.length <= 1) {
+                loadCompetitorFilters().then(() => {
+                    document.getElementById('genReportDate').value =
+                        new Date().toISOString().split('T')[0];
+                    new bootstrap.Modal(document.getElementById('generateModal')).show();
+                });
+            } else {
+                document.getElementById('genReportDate').value =
+                    new Date().toISOString().split('T')[0];
+                new bootstrap.Modal(document.getElementById('generateModal')).show();
+            }
+        }
+
+        async function doGenerateReport() {
+            const competitorId = document.getElementById('genCompetitorId').value;
+            const reportType = document.getElementById('genReportType').value;
+            const reportDate = document.getElementById('genReportDate').value;
+
+            if (!competitorId) { alert('请选择竞品'); return; }
+            if (!reportDate) { alert('请选择日期'); return; }
+
+            const btn = document.getElementById('genBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> AI分析中...';
+
+            try {
+                const resp = await fetch(`${API_BASE}/generate_report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        competitor_id: parseInt(competitorId),
+                        report_type: reportType,
+                        report_date: reportDate,
+                    }),
+                });
+                const json = await resp.json();
+
+                if (!json.success) throw new Error(json.error || '生成失败');
+
+                bootstrap.Modal.getInstance(document.getElementById('generateModal')).hide();
+                loadReports();
+                // 自动打开新生成的报告
+                if (json.data?.report_id) {
+                    loadReportDetail(json.data.report_id);
+                }
+                alert('AI 报告生成成功!');
+            } catch (err) {
+                alert('生成失败: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-magic"></i> 生成';
+            }
+        }
+
+        // ============================================================
+        // 辅助
+        // ============================================================
+        function reportTypeLabel(type) {
+            const map = { daily: '日报', weekly: '周报', anomaly: '异常' };
+            return map[type] || type;
+        }
+
+        function reportTypeColor(type) {
+            const map = { daily: 'primary', weekly: 'success', anomaly: 'danger' };
+            return map[type] || 'secondary';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function simpleMarkdownToHtml(md) {
+            if (!md) return '<p class="text-muted">无内容</p>';
+            let html = md
+                // 标题
+                .replace(/^### (.+)$/gm, '<h5 class="mt-3">$1</h5>')
+                .replace(/^## (.+)$/gm, '<h4 class="mt-3">$1</h4>')
+                .replace(/^# (.+)$/gm, '<h3 class="mt-3">$1</h3>')
+                // 粗体
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                // 列表
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                // 表格（简单处理）
+                .replace(/^\|(.+)\|$/gm, (match) => {
+                    const cells = match.split('|').filter(c => c.trim());
+                    if (match.includes('---')) return '';
+                    return '<tr>' + cells.map(c => `<td class="border px-2 py-1">${c.trim()}</td>`).join('') + '</tr>';
+                })
+                // 换行
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+
+            html = '<p>' + html + '</p>';
+            // 包裹连续的 <li>
+            html = html.replace(/(<li>.*?<\/li>\s*)+/g, '<ul class="mb-2">$&</ul>');
+            // 包裹连续的 <tr>
+            html = html.replace(/(<tr>.*?<\/tr>\s*)+/g, '<table class="table table-sm table-bordered mb-2">$&</table>');
+
+            return html;
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}AI智能助手 — EcomIQ-RPA{% endblock %}
+{% block page_title %}🤖 AI智能助手{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-container {
+        max-width: 800px;
+        margin: 40px auto;
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        padding: 16px 20px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 14px;
+    }
+
+    .chat-body {
+        padding: 40px;
+        text-align: center;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .chat-body .robot-icon {
+        font-size: 56px;
+        margin-bottom: 16px;
+    }
+
+    .chat-body h5 {
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+
+    .chat-body p {
+        color: #64748b;
+        font-size: 13px;
+        max-width: 400px;
+        line-height: 1.6;
+    }
+
+    .chat-footer {
+        padding: 12px 20px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .chat-input-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .chat-input-group input {
+        flex: 1;
+        padding: 8px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 13px;
+        outline: none;
+    }
+
+    .chat-input-group input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+
+    .chat-input-group button {
+        padding: 8px 18px;
+        background: #3b82f6;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .chat-input-group button:hover {
+        background: #2563eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="chat-container">
+        <div class="chat-header">
+            <i class="bi bi-robot me-2"></i> EcomIQ-RPA AI 智能助手
+        </div>
+        <div class="chat-body">
+            <div class="robot-icon">🤖</div>
+            <h5>你好，我是EcomIQ-RPA AI助手</h5>
+            <p>我可以帮你进行故障诊断、数据校验、知识库问答等。请在下方向我提问。</p>
+        </div>
+        <div class="chat-footer">
+            <div class="chat-input-group">
+                <input type="text" placeholder="输入问题，如：今天采集了多少数据？" disabled>
+                <button disabled>发送</button>
+            </div>
+            <div style="text-align:center;margin-top:8px;">
+                <span style="color:#94a3b8;font-size:11px;">AI助手功能开发中，敬请期待完整版</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

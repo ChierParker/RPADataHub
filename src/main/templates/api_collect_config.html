@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% block title %}API 采集配置 — EcomIQ-RPA{% endblock %}
+{% block page_title %}🔌 API 采集配置{% endblock %}
+
+{% block extra_head %}
+<style>
+    .tab-nav {
+        display: flex;
+        gap: 0;
+        margin-bottom: 14px;
+    }
+
+    .tab-nav .tab-btn {
+        padding: 8px 20px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #64748b;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.12s;
+    }
+
+    .tab-nav .tab-btn:first-child {
+        border-radius: 8px 0 0 8px;
+    }
+
+    .tab-nav .tab-btn:last-child {
+        border-radius: 0 8px 8px 0;
+    }
+
+    .tab-nav .tab-btn.active {
+        background: #3b82f6;
+        color: #fff;
+        border-color: #3b82f6;
+    }
+
+    .tab-panel {
+        display: none;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    .cred-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 14px;
+    }
+
+    .cred-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+    }
+
+    .cred-card .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .cred-card .cred-name {
+        font-weight: 600;
+        font-size: 14px;
+        color: #1e293b;
+    }
+
+    .cred-card .cred-meta {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .cred-card .card-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .cred-card .card-actions button {
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.55);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-card {
+        background: #fff;
+        border-radius: 14px;
+        width: 600px;
+        max-width: 95vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-card .modal-hd {
+        padding: 14px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+    }
+
+    .modal-card .modal-bd {
+        padding: 16px 20px;
+    }
+
+    .modal-card .modal-ft {
+        padding: 12px 20px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        background: #f8fafc;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('credentials')">🔑 凭证管理</button>
+        <button class="tab-btn" onclick="switchTab('tasks')">📋 任务配置</button>
+    </div>
+
+    <!-- 凭证管理面板 -->
+    <div class="tab-panel active" id="panelCredentials">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 style="margin:0">API 凭证</h5>
+            <button class="btn btn-primary btn-sm" onclick="openCredEditor()">+ 添加凭证</button>
+        </div>
+        <div class="cred-grid" id="credGrid">
+            <div style="text-align:center;padding:40px;grid-column:1/-1;color:#94a3b8">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 任务配置面板 -->
+    <div class="tab-panel" id="panelTasks">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 style="margin:0">API 采集任务</h5>
+            <button class="btn btn-primary btn-sm" onclick="openTaskEditor()">+ 新增任务</button>
+        </div>
+        <div id="taskGrid">
+            <div style="text-align:center;padding:40px;color:#94a3b8">加载中...</div>
+        </div>
+    </div>
+</div>
+
+<!-- 凭证编辑模态框 -->
+<div class="modal-overlay" id="credModal">
+    <div class="modal-card">
+        <div class="modal-hd">
+            <h6 style="margin:0" id="credTitle">添加凭证</h6><button class="btn-close" onclick="closeCredEditor()"></button>
+        </div>
+        <div class="modal-bd">
+            <input type="hidden" id="credId">
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">凭证名称 <span
+                            style="color:red">*</span></label><input class="form-control form-control-sm" id="credName"
+                        placeholder="如: Amazon SP-API"></div>
+                <div class="col-3"><label class="form-label" style="font-size:12px;margin-bottom:2px">平台 <span
+                            style="color:red">*</span></label><select class="form-select form-select-sm"
+                        id="credPlatform">
+                        <option value="Amazon">Amazon</option>
+                        <option value="Walmart">Walmart</option>
+                        <option value="Shopee">Shopee</option>
+                        <option value="1688">1688</option>
+                        <option value="custom">自定义</option>
+                    </select></div>
+                <div class="col-3"><label class="form-label"
+                        style="font-size:12px;margin-bottom:2px">认证方式</label><select class="form-select form-select-sm"
+                        id="credAuthType">
+                        <option value="bearer">Bearer Token</option>
+                        <option value="api_key">API Key</option>
+                        <option value="oauth2">OAuth 2.0</option>
+                        <option value="hmac">HMAC签名</option>
+                    </select></div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">关联店铺</label><input
+                        class="form-control form-control-sm" id="credShop" placeholder="如: EcomIQ-US"></div>
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">API
+                        基础URL</label><input class="form-control form-control-sm" id="credBaseUrl"
+                        placeholder="如: https://api.example.com/v1"></div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">Client ID / App
+                        Key</label><input class="form-control form-control-sm" id="credClientId" type="password"
+                        placeholder="加密存储"></div>
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">Client Secret /
+                        App Secret</label><input class="form-control form-control-sm" id="credClientSecret"
+                        type="password" placeholder="加密存储"></div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">Access
+                        Token</label><input class="form-control form-control-sm" id="credAccessToken" type="password"
+                        placeholder="加密存储"></div>
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">Refresh
+                        Token</label><input class="form-control form-control-sm" id="credRefreshToken" type="password"
+                        placeholder="加密存储"></div>
+            </div>
+            <div class="mb-2"><label class="form-label" style="font-size:12px;margin-bottom:2px">过期时间</label><input
+                    class="form-control form-control-sm" id="credExpiresAt" type="date"></div>
+        </div>
+        <div class="modal-ft"><button class="btn btn-secondary btn-sm" onclick="closeCredEditor()">取消</button><button
+                class="btn btn-primary btn-sm" onclick="saveCred()">保存</button></div>
+    </div>
+</div>
+
+<!-- 任务编辑模态框 -->
+<div class="modal-overlay" id="taskModal">
+    <div class="modal-card">
+        <div class="modal-hd">
+            <h6 style="margin:0" id="taskTitle">新增任务</h6><button class="btn-close" onclick="closeTaskEditor()"></button>
+        </div>
+        <div class="modal-bd">
+            <input type="hidden" id="taskId">
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">任务名称 <span
+                            style="color:red">*</span></label><input class="form-control form-control-sm" id="taskName"
+                        placeholder="如: Amazon订单采集"></div>
+                <div class="col-3"><label class="form-label" style="font-size:12px;margin-bottom:2px">平台</label><input
+                        class="form-control form-control-sm" id="taskPlatform" placeholder="如: Amazon"></div>
+                <div class="col-3"><label class="form-label" style="font-size:12px;margin-bottom:2px">类型</label><select
+                        class="form-select form-select-sm" id="taskCollectType">
+                        <option value="api">API</option>
+                        <option value="browser">Playwright</option>
+                    </select></div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label"
+                        style="font-size:12px;margin-bottom:2px">HTTP方法</label><select
+                        class="form-select form-select-sm" id="taskApiMethod">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                    </select></div>
+                <div class="col-6"><label class="form-label"
+                        style="font-size:12px;margin-bottom:2px">API端点</label><input
+                        class="form-control form-control-sm" id="taskApiEndpoint" placeholder="如: /orders/v0/orders">
+                </div>
+            </div>
+            <div class="mb-2"><label class="form-label" style="font-size:12px;margin-bottom:2px">查询参数
+                    (JSON)</label><textarea class="form-control form-control-sm" id="taskApiParams" rows="3"
+                    placeholder='{"MarketplaceIds":["ATVPDKIKX0DER"]}'
+                    style="font-family:monospace;font-size:11px"></textarea></div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label" style="font-size:12px;margin-bottom:2px">凭证</label><select
+                        class="form-select form-select-sm" id="taskCredentialId">
+                        <option value="">不使用凭证</option>
+                    </select></div>
+                <div class="col-6"><label class="form-label"
+                        style="font-size:12px;margin-bottom:2px">JSONPath数据路径</label><input
+                        class="form-control form-control-sm" id="taskDataPath" placeholder="如: $.payload.Orders"></div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-4"><label class="form-label"
+                        style="font-size:12px;margin-bottom:2px">目标ODS表</label><input
+                        class="form-control form-control-sm" id="taskOdsTable" placeholder="ods_table_name"></div>
+                <div class="col-4"><label class="form-label"
+                        style="font-size:12px;margin-bottom:2px">超时(秒)</label><input
+                        class="form-control form-control-sm" id="taskTimeout" type="number" value="300"></div>
+                <div class="col-4"><label class="form-label" style="font-size:12px;margin-bottom:2px">状态</label><select
+                        class="form-select form-select-sm" id="taskStatus">
+                        <option value="1">启用</option>
+                        <option value="0">停用</option>
+                    </select></div>
+            </div>
+        </div>
+        <div class="modal-ft"><button class="btn btn-secondary btn-sm" onclick="closeTaskEditor()">取消</button><button
+                class="btn btn-primary btn-sm" onclick="saveTask()">保存</button></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active') });
+        document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active') });
+        document.querySelector('.tab-btn[onclick*="' + tab + '"]').classList.add('active');
+        document.getElementById(tab === 'credentials' ? 'panelCredentials' : 'panelTasks').classList.add('active');
+        if (tab === 'credentials') loadCredentials(); else loadTasks();
+    }
+
+    // ========== 凭证管理 ==========
+    function loadCredentials() {
+        fetch('/rpa/api/api_collect/credentials')
+            .then(r => r.json()).then(d => {
+                var grid = document.getElementById('credGrid');
+                var records = d.data ? d.data.records || [] : [];
+                if (!records.length) { grid.innerHTML = '<div style="text-align:center;padding:40px;grid-column:1/-1;color:#94a3b8">暂无凭证，点击"+ 添加凭证"创建</div>'; return; }
+                grid.innerHTML = records.map(function (r) {
+                    return '<div class="cred-card"><div class="card-top"><span class="cred-name">🔑 ' + escapeHtml(r.name) + '</span><span style="font-size:11px;color:' + (r.status === 'active' ? '#16a34a' : '#94a3b8') + '">● ' + (r.status || 'unknown') + '</span></div><div class="cred-meta"><span>' + escapeHtml(r.platform) + '</span><span>·</span><span>' + escapeHtml(r.auth_type || '') + '</span>' + (r.shop_name ? '<span>·</span><span>' + escapeHtml(r.shop_name) + '</span>' : '') + (r.expires_at ? '<span>·</span><span>到期: ' + r.expires_at.substring(0, 10) + '</span>' : '') + '</div><div class="card-actions"><button class="btn btn-outline-secondary btn-sm" onclick="openCredEditor(' + r.id + ')">编辑</button><button class="btn btn-outline-danger btn-sm" onclick="deleteCred(' + r.id + ',\'' + escapeHtml(r.name) + '\')">删除</button></div></div>';
+                }).join('');
+            });
+    }
+    function openCredEditor(id) {
+        document.getElementById('credId').value = ''; document.getElementById('credTitle').textContent = '添加凭证';
+        ['credName', 'credClientId', 'credClientSecret', 'credAccessToken', 'credRefreshToken', 'credShop', 'credBaseUrl'].forEach(function (f) { document.getElementById(f).value = '' });
+        document.getElementById('credPlatform').value = 'Amazon'; document.getElementById('credAuthType').value = 'bearer'; document.getElementById('credExpiresAt').value = '';
+        if (id) {
+            document.getElementById('credId').value = id; document.getElementById('credTitle').textContent = '编辑凭证';
+            // 从已有数据回填（简化版：仅回填非加密字段）
+            // 加密字段不回填，留空表示不修改
+        }
+        document.getElementById('credModal').classList.add('show');
+    }
+    function closeCredEditor() { document.getElementById('credModal').classList.remove('show') }
+    function saveCred() {
+        var id = document.getElementById('credId').value;
+        var payload = { name: document.getElementById('credName').value.trim(), platform: document.getElementById('credPlatform').value, auth_type: document.getElementById('credAuthType').value, shop_name: document.getElementById('credShop').value.trim(), base_url: document.getElementById('credBaseUrl').value.trim(), expires_at: document.getElementById('credExpiresAt').value || null };
+        if (!payload.name || !payload.platform) { showToast('名称和平台不能为空', 'warning'); return }
+        var sensitiveFields = ['client_id', 'client_secret', 'access_token', 'refresh_token'];
+        sensitiveFields.forEach(function (f) { var v = document.getElementById('cred' + (f.charAt(0).toUpperCase() + f.slice(1)).replace('_', '')).value; if (v) payload[f] = v });
+        var url = id ? '/rpa/api/api_collect/credentials/' + id : '/rpa/api/api_collect/credentials';
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            .then(r => r.json()).then(d => { if (d.success) { showToast('凭证已保存'); closeCredEditor(); loadCredentials() } else showToast(d.error, 'error') });
+    }
+    function deleteCred(id, name) { if (!confirm('确定删除凭证"' + name + '"?')) return; fetch('/rpa/api/api_collect/credentials/' + id, { method: 'DELETE' }).then(r => r.json()).then(d => { if (d.success) { showToast('已删除'); loadCredentials() } else showToast(d.error, 'error') }) }
+
+    // ========== 任务管理 ==========
+    function loadTasks() {
+        fetch('/rpa/api/tasks/queue?per_page=20')
+            .then(r => r.json()).then(d => {
+                var grid = document.getElementById('taskGrid');
+                var records = Array.isArray(d.records) ? d.records : [];
+                if (!records.length) { grid.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">暂无任务</div>'; return; }
+                grid.innerHTML = '<table class="table table-sm"><thead><tr><th>任务名称</th><th>平台</th><th>类型</th><th>状态</th><th>操作</th></tr></thead><tbody>' + records.slice(0, 20).map(function (r) { return '<tr><td>' + escapeHtml(r.task_name || r.script_name || '未命名') + '</td><td>' + escapeHtml(r.platform || '--') + '</td><td>' + escapeHtml(r.collect_type || 'browser') + '</td><td>' + escapeHtml(r.task_status || '--') + '</td><td><button class="btn btn-outline-secondary btn-sm" onclick="runTask(' + r.config_id + ')">▶ 执行</button></td></tr>' }).join('') + '</tbody></table>';
+            });
+        // 加载凭证下拉
+        fetch('/rpa/api/api_collect/credentials').then(r => r.json()).then(d => { var recs = d.data ? d.data.records || [] : []; var sel = document.getElementById('taskCredentialId'); sel.innerHTML = '<option value="">不使用凭证</option>' + recs.map(function (r) { return '<option value="' + r.id + '">🔑 ' + escapeHtml(r.name) + '</option>' }).join('') });
+    }
+    function openTaskEditor(id) { document.getElementById('taskId').value = id || ''; document.getElementById('taskTitle').textContent = id ? '编辑任务' : '新增任务'; document.getElementById('taskModal').classList.add('show') }
+    function closeTaskEditor() { document.getElementById('taskModal').classList.remove('show') }
+    function saveTask() {
+        var name = document.getElementById('taskName').value.trim();
+        if (!name) { showToast('任务名称不能为空', 'warning'); return }
+        var payload = {
+            task_name: name, script_name: 'api_collect', platform: document.getElementById('taskPlatform').value.trim(),
+            collect_type: 'api', timeout_sec: parseInt(document.getElementById('taskTimeout').value) || 300,
+            status: parseInt(document.getElementById('taskStatus').value),
+            api_endpoint: document.getElementById('taskApiEndpoint').value.trim(),
+            api_method: document.getElementById('taskApiMethod').value,
+            api_params: document.getElementById('taskApiParams').value.trim(),
+            credential_id: document.getElementById('taskCredentialId').value || null,
+            data_path: document.getElementById('taskDataPath').value.trim(),
+            target_ods_table: document.getElementById('taskOdsTable').value.trim(),
+            schedule_type: 'now'
+        };
+        fetch('/rpa/api/tasks/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            .then(r => r.json()).then(d => { if (d.success) { showToast('任务已保存'); closeTaskEditor(); loadTasks() } else showToast(d.error || '保存失败', 'error') });
+    }
+    function runTask(id) { if (!confirm('确认手动执行此任务?')) return; fetch('/rpa/api/tasks/run/' + id, { method: 'POST' }).then(r => r.json()).then(d => { if (d.success) showToast('任务已提交: ' + d.task_uuid); else showToast(d.error, 'error') }) }
+
+    function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"') }
+    document.getElementById('credModal').addEventListener('click', function (e) { if (e.target === this) closeCredEditor() });
+    document.getElementById('taskModal').addEventListener('click', function (e) { if (e.target === this) closeTaskEditor() });
+    loadCredentials();
+</script>
+{% endblock %}

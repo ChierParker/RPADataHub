@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block title %}知识库 — 智能客服{% endblock %}
+{% block page_title %}💬 智能客服 — 知识库{% endblock %}
+
+{% block extra_head %}
+<style>
+    .kb-topbar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .kb-topbar .search-box {
+        flex: 1;
+        min-width: 200px;
+        max-width: 400px;
+    }
+
+    .kb-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 14px;
+    }
+
+    .kb-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        transition: box-shadow 0.15s;
+    }
+
+    .kb-card:hover {
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .kb-card .kb-type {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 4px;
+    }
+
+    .kb-type-faq {
+        background: #e0f2fe;
+        color: #0284c7;
+    }
+
+    .kb-type-doc {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .kb-card .kb-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: #1e293b;
+        margin: 6px 0;
+    }
+
+    .kb-card .kb-meta {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .kb-card .kb-preview {
+        font-size: 12px;
+        color: #64748b;
+        line-height: 1.5;
+        max-height: 60px;
+        overflow: hidden;
+    }
+
+    .kb-card .card-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 6px;
+    }
+
+    .kb-card .card-actions button {
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+
+    .semantic-panel {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .semantic-panel .result-item {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .semantic-panel .result-item:last-child {
+        border-bottom: none;
+    }
+
+    .cs-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.55);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cs-modal-overlay.show {
+        display: flex;
+    }
+
+    .cs-modal-card {
+        background: #fff;
+        border-radius: 14px;
+        width: 620px;
+        max-width: 95vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+        border: 1px solid #e2e8f0;
+    }
+
+    .cs-modal-card .modal-hd {
+        padding: 14px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+    }
+
+    .cs-modal-card .modal-bd {
+        padding: 16px 20px;
+    }
+
+    .cs-modal-card .modal-ft {
+        padding: 12px 20px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        background: #f8fafc;
+    }
+
+    .upload-zone {
+        border: 2px dashed #cbd5e1;
+        border-radius: 10px;
+        padding: 24px;
+        text-align: center;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: border-color 0.15s;
+    }
+
+    .upload-zone:hover {
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <!-- 语义搜索面板 -->
+    <div class="semantic-panel" id="semanticPanel">
+        <div style="display:flex;gap:8px;align-items:center">
+            <input class="form-control form-control-sm" id="semanticQuery"
+                placeholder="🧠 AI 语义搜索：输入问题，AI 理解意图后匹配知识库..." style="flex:1;font-size:13px"
+                onkeydown="if(event.key==='Enter')semanticSearch()">
+            <button class="btn btn-sm btn-primary" onclick="semanticSearch()" id="semanticBtn">🔍 搜索</button>
+        </div>
+        <div id="semanticResults" style="margin-top:12px;display:none"></div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="kb-topbar">
+        <input class="form-control form-control-sm search-box" id="kbSearch" placeholder="🔍 搜索知识库..."
+            onkeydown="if(event.key==='Enter')loadKnowledge()">
+        <select class="form-select form-select-sm" id="kbCategory" style="width:120px" onchange="loadKnowledge()">
+            <option value="">全部分类</option>
+            <option value="product">产品知识</option>
+            <option value="policy">售后政策</option>
+            <option value="logistics">发货物流</option>
+            <option value="account">账号问题</option>
+            <option value="custom">自定义</option>
+        </select>
+        <button class="btn btn-sm btn-outline-primary" onclick="openFaqEditor()">+ FAQ</button>
+        <label class="btn btn-sm btn-outline-secondary" style="margin:0">
+            📄 上传文档 <input type="file" id="uploadFile" style="display:none" accept=".pdf,.txt,.md,.docx,.csv,.xlsx"
+                onchange="uploadDocument()">
+        </label>
+    </div>
+
+    <!-- 知识库卡片网格 -->
+    <div class="kb-grid" id="kbGrid">
+        <div style="text-align:center;padding:40px;grid-column:1/-1;color:#94a3b8">
+            <span class="spinner-border spinner-border-sm me-2"></span>加载中...
+        </div>
+    </div>
+</div>
+
+<!-- FAQ 编辑模态框 -->
+<div class="cs-modal-overlay" id="faqModal">
+    <div class="cs-modal-card">
+        <div class="modal-hd"
+            style="padding:14px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">
+            <h6 style="margin:0" id="faqTitle">添加 FAQ</h6>
+            <button class="btn-close" onclick="closeFaqEditor()"></button>
+        </div>
+        <div class="modal-bd" style="padding:16px 20px">
+            <input type="hidden" id="faqId">
+            <div class="mb-2">
+                <label class="form-label" style="font-size:12px;margin-bottom:2px">问题 <span
+                        style="color:red">*</span></label>
+                <input class="form-control form-control-sm" id="faqQuestion" placeholder="如：退货政策是什么？">
+            </div>
+            <div class="mb-2">
+                <label class="form-label" style="font-size:12px;margin-bottom:2px">答案 <span
+                        style="color:red">*</span></label>
+                <textarea class="form-control form-control-sm" id="faqAnswer" rows="6" placeholder="详细回答..."></textarea>
+            </div>
+            <div class="row g-2">
+                <div class="col-4">
+                    <label class="form-label" style="font-size:12px;margin-bottom:2px">分类</label>
+                    <select class="form-select form-select-sm" id="faqCategory">
+                        <option value="product">产品知识</option>
+                        <option value="policy">售后政策</option>
+                        <option value="logistics">发货物流</option>
+                        <option value="account">账号问题</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div class="col-4">
+                    <label class="form-label" style="font-size:12px;margin-bottom:2px">语言</label>
+                    <select class="form-select form-select-sm" id="faqLanguage">
+                        <option value="zh">中文</option>
+                        <option value="en">英文</option>
+                    </select>
+                </div>
+                <div class="col-4">
+                    <label class="form-label" style="font-size:12px;margin-bottom:2px">关键词</label>
+                    <input class="form-control form-control-sm" id="faqKeywords" placeholder="逗号分隔">
+                </div>
+            </div>
+        </div>
+        <div class="modal-ft">
+            <button class="btn btn-secondary btn-sm" onclick="closeFaqEditor()">取消</button>
+            <button class="btn btn-primary btn-sm" onclick="saveFaq()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const CAT_LABELS = { product: '产品知识', policy: '售后政策', logistics: '发货物流', account: '账号问题', custom: '自定义' };
+
+    function loadKnowledge() {
+        const search = document.getElementById('kbSearch').value.trim();
+        const cat = document.getElementById('kbCategory').value;
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (cat) params.set('category', cat);
+
+        fetch('/api/cs/knowledge?' + params.toString())
+            .then(r => r.json())
+            .then(d => {
+                if (!d.success) { showToast(d.error, 'error'); return; }
+                renderKnowledge(d.data.records);
+            });
+    }
+
+    function renderKnowledge(records) {
+        const grid = document.getElementById('kbGrid');
+        if (!records || records.length === 0) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;grid-column:1/-1;color:#94a3b8">知识库为空，点击"+ FAQ"或"上传文档"开始构建</div>';
+            return;
+        }
+        grid.innerHTML = records.map(r => {
+            const isDoc = !!r.document_name;
+            const typeCls = isDoc ? 'kb-type-doc' : 'kb-type-faq';
+            const typeLabel = isDoc ? '📄 文档' : '❓ FAQ';
+            const preview = r.answer_preview || (r.answer || '').substring(0, 120);
+            return `
+            <div class="kb-card">
+                <span class="kb-type ${typeCls}">${typeLabel}</span>
+                <div class="kb-title">${escapeHtml(r.question || r.document_name || '未命名')}</div>
+                <div class="kb-meta">
+                    <span>${CAT_LABELS[r.category] || r.category}</span>
+                    <span>·</span>
+                    <span>引用 ${r.usage_count || 0} 次</span>
+                    ${isDoc ? '<span>·</span><span>' + (r.document_size ? Math.round(r.document_size / 1024) + 'KB' : '') + '</span>' : ''}
+                </div>
+                <div class="kb-preview">${escapeHtml(preview)}</div>
+                <div class="card-actions">
+                    ${isDoc ? `<button class="btn btn-outline-secondary btn-sm" onclick="downloadDoc(${r.id})">⬇ 下载</button>` : `<button class="btn btn-outline-secondary btn-sm" onclick="openFaqEditor(${r.id})">✏️ 编辑</button>`}
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteKnowledge(${r.id}, '${escapeHtml(r.question || r.document_name)}')">🗑 删除</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ========== FAQ 编辑器 ==========
+    function openFaqEditor(id) {
+        const modal = document.getElementById('faqModal');
+        document.getElementById('faqId').value = '';
+        document.getElementById('faqTitle').textContent = '添加 FAQ';
+        document.getElementById('faqQuestion').value = '';
+        document.getElementById('faqAnswer').value = '';
+        document.getElementById('faqCategory').value = 'product';
+        document.getElementById('faqLanguage').value = 'zh';
+        document.getElementById('faqKeywords').value = '';
+        if (id) {
+            // 从已有数据回填
+            document.getElementById('faqId').value = id;
+            document.getElementById('faqTitle').textContent = '编辑 FAQ';
+            // 简单地从卡片数据回填（已有 records 在 allRecords）
+            if (window._kbRecords) {
+                const r = window._kbRecords.find(x => x.id === id);
+                if (r) {
+                    document.getElementById('faqQuestion').value = r.question || '';
+                    document.getElementById('faqAnswer').value = r.answer || '';
+                    document.getElementById('faqCategory').value = r.category || 'product';
+                    document.getElementById('faqLanguage').value = r.language || 'zh';
+                    document.getElementById('faqKeywords').value = r.keywords || '';
+                }
+            }
+        }
+        modal.classList.add('show');
+    }
+    function closeFaqEditor() { document.getElementById('faqModal').classList.remove('show'); }
+
+    function saveFaq() {
+        const id = document.getElementById('faqId').value;
+        const q = document.getElementById('faqQuestion').value.trim();
+        const a = document.getElementById('faqAnswer').value.trim();
+        if (!q || !a) { showToast('问题和答案不能为空', 'warning'); return; }
+        const payload = {
+            question: q, answer: a,
+            category: document.getElementById('faqCategory').value,
+            language: document.getElementById('faqLanguage').value,
+            keywords: document.getElementById('faqKeywords').value.trim()
+        };
+        const url = id ? '/api/cs/knowledge/update/' + id : '/api/cs/knowledge/create';
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            .then(r => r.json()).then(d => {
+                if (d.success) { showToast(id ? 'FAQ已更新' : 'FAQ已创建'); closeFaqEditor(); loadKnowledge(); }
+                else showToast(d.error, 'error');
+            });
+    }
+
+    function deleteKnowledge(id, name) {
+        if (!confirm('确定删除 "' + name + '" 吗？')) return;
+        fetch('/api/cs/knowledge/delete/' + id, { method: 'POST' })
+            .then(r => r.json()).then(d => {
+                if (d.success) { showToast('已删除'); loadKnowledge(); }
+                else showToast(d.error, 'error');
+            });
+    }
+
+    function downloadDoc(id) {
+        window.open('/api/cs/knowledge/download/' + id, '_blank');
+    }
+
+    // ========== 文档上传 ==========
+    function uploadDocument() {
+        const file = document.getElementById('uploadFile').files[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('title', file.name);
+        fd.append('category', 'product');
+        showToast('上传中...', 'warning');
+        fetch('/api/cs/knowledge/upload', { method: 'POST', body: fd })
+            .then(r => r.json()).then(d => {
+                if (d.success) { showToast(`文档已上传，解析 ${d.data.chars_parsed} 字符`); loadKnowledge(); }
+                else showToast(d.error, 'error');
+            });
+        document.getElementById('uploadFile').value = '';
+    }
+
+    // ========== AI 语义搜索 ==========
+    function semanticSearch() {
+        const query = document.getElementById('semanticQuery').value.trim();
+        if (query.length < 3) { showToast('请输入至少3个字', 'warning'); return; }
+        const btn = document.getElementById('semanticBtn');
+        btn.disabled = true; btn.textContent = '搜索中...';
+        fetch('/api/cs/knowledge/semantic-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+        })
+            .then(r => r.json()).then(d => {
+                btn.disabled = false; btn.textContent = '🔍 搜索';
+                if (!d.success) { showToast(d.error, 'error'); return; }
+                const panel = document.getElementById('semanticResults');
+                panel.style.display = 'block';
+                if (d.data.total === 0) {
+                    panel.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px">未找到匹配的知识库内容</div>';
+                    return;
+                }
+                // RAG AI 回答 + 匹配结果
+                const aiAnswer = d.data.ai_answer || '';
+                const aiAnswerHtml = aiAnswer
+                    ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:12px">
+                        <div style="font-weight:600;font-size:13px;color:#166534;margin-bottom:8px">🤖 AI 智能回答（基于知识库）</div>
+                        <div style="font-size:13px;color:#1e293b;line-height:1.7;white-space:pre-wrap">${escapeHtml(aiAnswer)}</div>
+                       </div>`
+                    : '';
+                panel.innerHTML = `
+                ${aiAnswerHtml}
+                <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">
+                    AI 关键词: <code>${escapeHtml(d.data.ai_keywords)}</code> | 匹配 ${d.data.total} 条
+                </div>
+                ${d.data.results.map(r => `
+                    <div class="result-item">
+                        <div style="font-weight:600;font-size:13px;color:#1e293b">${escapeHtml(r.question || r.document_name)}</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:4px">${escapeHtml(r.answer_preview || '')}</div>
+                        <div style="font-size:10px;color:#94a3b8;margin-top:2px">${CAT_LABELS[r.category] || r.category} | 引用 ${r.usage_count || 0} 次</div>
+                    </div>
+                `).join('')}`;
+                showToast(`找到 ${d.data.total} 条相关结果`, 'success');
+            })
+            .catch(e => { btn.disabled = false; btn.textContent = '🔍 搜索'; showToast('搜索失败', 'error'); });
+    }
+
+    function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"'); }
+
+    document.getElementById('faqModal').addEventListener('click', function (e) { if (e.target === this) closeFaqEditor(); });
+    loadKnowledge();
+</script>
+{% endblock %}

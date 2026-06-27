@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local runtime data
+debug/
+input/
+logs/
+output/
+profiles/
+browser/
+
+# Local-only configuration
+settings.local.json
+
+# Build artifacts
+build/
+dist/
+*.spec
+*.exe
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

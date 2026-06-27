@@ -1,0 +1,56 @@
+{
+  "_说明": "将此文件与 LeadScraper.exe 放在同一目录。修改后重启程序生效。JSON 格式，注意逗号和引号。",
+
+  "smtp": {
+    "_说明": "开发信发送邮箱配置（目前为模拟发送，后续版本启用真实 SMTP）",
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "username": "your-email@gmail.com",
+    "password": "your-app-password",
+    "use_tls": true,
+    "from_name": "LeadScraper",
+    "send_interval_secs": 3
+  },
+
+  "flask": {
+    "_说明": "Web 服务地址和端口",
+    "host": "127.0.0.1",
+    "port": 5000,
+    "debug": false
+  },
+
+  "scraper": {
+    "_说明": "采集参数配置",
+    "default_concurrency": 5,
+    "min_concurrency": 3,
+    "max_concurrency": 8,
+    "default_max_pages": 3,
+    "max_pages_min": 1,
+    "max_pages_max": 10,
+    "retry_times": 2,
+    "retry_delay_secs": 3,
+    "captcha_timeout_secs": 600,
+    "page_load_timeout_ms": 30000,
+    "search_timeout_ms": 60000
+  },
+
+  "upload": {
+    "_说明": "上传文件大小上限（MB）",
+    "max_size_mb": 50
+  },
+
+  "proxy": {
+    "_说明": "代理服务器地址，留空表示不使用代理。格式如 http://127.0.0.1:7890",
+    "address": ""
+  },
+
+  "country_code": {
+    "_说明": "电话号码国家代码过滤，如 +44 表示只采集英国号码，留空表示不过滤",
+    "code": ""
+  },
+
+  "user_agent": {
+    "_说明": "浏览器 User-Agent，一般无需修改",
+    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+  }
+}

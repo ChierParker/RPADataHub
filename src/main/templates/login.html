@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPA Admin - 登录</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden
+        }
+
+        .login-page {
+            display: grid;
+            grid-template-columns: 1fr 480px;
+            min-height: 100vh
+        }
+
+        @media(max-width:900px) {
+            .login-page {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .char-panel {
+            background: linear-gradient(180deg, #b8bcc0 0%, #c5c9cc 30%, #d1d5d7 60%, #ddd 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .char-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, .3) 0%, transparent 60%),
+                radial-gradient(circle at 20% 70%, rgba(255, 255, 255, .15) 0%, transparent 50%);
+        }
+
+        .logo-top {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #333;
+            font-size: 18px;
+            font-weight: 700
+        }
+
+        .char-stage {
+            position: relative;
+            width: 550px;
+            height: 420px;
+            z-index: 5
+        }
+
+        .char-purple {
+            position: absolute;
+            bottom: 0;
+            left: 70px;
+            width: 180px;
+            height: 400px;
+            background: #6C3FF5;
+            border-radius: 10px 10px 0 0;
+            z-index: 1;
+            transition: all .7s ease-in-out;
+            transform-origin: bottom center;
+        }
+
+        .char-purple.typing {
+            height: 440px;
+            transform: skewX(-12deg) translateX(40px)
+        }
+
+        .char-purple.showing {
+            transform: skewX(0deg)
+        }
+
+        .char-black {
+            position: absolute;
+            bottom: 0;
+            left: 240px;
+            width: 120px;
+            height: 310px;
+            background: #2D2D2D;
+            border-radius: 8px 8px 0 0;
+            z-index: 2;
+            transition: all .7s ease-in-out;
+            transform-origin: bottom center;
+        }
+
+        .char-black.typing {
+            transform: skewX(10deg) translateX(20px)
+        }
+
+        .char-black.looking {
+            transform: skewX(15deg) translateX(20px)
+        }
+
+        .char-orange {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 240px;
+            height: 200px;
+            background: #FF9B6B;
+            border-radius: 120px 120px 0 0;
+            z-index: 3;
+            transition: all .7s ease-in-out;
+            transform-origin: bottom center;
+        }
+
+        .char-yellow {
+            position: absolute;
+            bottom: 0;
+            left: 310px;
+            width: 140px;
+            height: 230px;
+            background: #E8D754;
+            border-radius: 70px 70px 0 0;
+            z-index: 4;
+            transition: all .7s ease-in-out;
+            transform-origin: bottom center;
+        }
+
+        .purple-eyes {
+            position: absolute;
+            left: 45px;
+            top: 40px;
+            display: flex;
+            gap: 30px;
+            transition: all .7s ease-in-out
+        }
+
+        .purple-eyes.typing {
+            left: 55px;
+            top: 65px
+        }
+
+        .purple-eyes.showing {
+            left: 20px;
+            top: 35px
+        }
+
+        .purple-eyes.peeking {
+            left: 15px;
+            top: 28px !important
+        }
+
+        .black-eyes {
+            position: absolute;
+            left: 26px;
+            top: 32px;
+            display: flex;
+            gap: 24px;
+            transition: all .7s ease-in-out
+        }
+
+        .black-eyes.typing {
+            left: 32px;
+            top: 12px
+        }
+
+        .orange-eyes {
+            position: absolute;
+            left: 82px;
+            top: 90px;
+            display: flex;
+            gap: 32px;
+            transition: all .2s ease-out
+        }
+
+        .orange-eyes.showing {
+            left: 50px;
+            top: 85px
+        }
+
+        .yellow-eyes {
+            position: absolute;
+            left: 52px;
+            top: 40px;
+            display: flex;
+            gap: 24px;
+            transition: all .2s ease-out
+        }
+
+        .yellow-eyes.showing {
+            left: 20px;
+            top: 35px
+        }
+
+        .yellow-mouth {
+            position: absolute;
+            left: 40px;
+            top: 88px;
+            width: 60px;
+            height: 4px;
+            background: #2D2D2D;
+            border-radius: 2px;
+            transition: all .2s ease-out
+        }
+
+        .yellow-mouth.showing {
+            left: 10px
+        }
+
+        .eye-white {
+            position: relative;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: height .15s
+        }
+
+        .eye-white.blink {
+            height: 2px !important
+        }
+
+        .purple-eyes .eye-white {
+            width: 42px;
+            height: 42px;
+            background: #fff
+        }
+
+        .black-eyes .eye-white {
+            width: 34px;
+            height: 34px;
+            background: #fff
+        }
+
+        .pupil {
+            position: absolute;
+            border-radius: 50%;
+            background: #2D2D2D;
+            transition: transform .1s ease-out
+        }
+
+        .pupil-lg {
+            width: 16px;
+            height: 16px
+        }
+
+        .pupil-sm {
+            width: 12px;
+            height: 12px
+        }
+
+        .pupil-xs {
+            width: 14px;
+            height: 14px
+        }
+
+        .login-panel {
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 400px
+        }
+
+        .login-card h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #111
+        }
+
+        .login-card h1+p {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 36px
+        }
+
+        .login-card label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            display: block
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all .2s;
+            background: #fafafa;
+            outline: none;
+        }
+
+        .login-card input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, .1);
+            background: #fff
+        }
+
+        .input-wrap {
+            position: relative;
+            margin-bottom: 18px
+        }
+
+        .pwd-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #999;
+            font-size: 18px;
+            user-select: none;
+            z-index: 1
+        }
+
+        .pwd-toggle:hover {
+            color: #333
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            background: #111;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all .2s;
+        }
+
+        .btn-login:hover {
+            background: #333;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .15)
+        }
+
+        .alert-msg {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 13px;
+            margin-bottom: 16px
+        }
+
+        .extra-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #888
+        }
+
+        .extra-row label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #888;
+            white-space: nowrap;
+            font-size: 12px;
+            font-weight: 400
+        }
+
+        .extra-row a {
+            color: #6366f1;
+            text-decoration: none
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-page">
+        <div class="char-panel">
+            <div class="logo-top">
+                <div
+                    style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px">
+                    R</div>
+                RPA Admin
+            </div>
+            <div class="char-stage">
+                <!-- Purple -->
+                <div class="char-purple" id="purp">
+                    <div class="purple-eyes" id="purpEyes">
+                        <div class="eye-white" id="pe1">
+                            <div class="pupil pupil-lg" id="pp1" style="transform:translate(0,0)"></div>
+                        </div>
+                        <div class="eye-white" id="pe2">
+                            <div class="pupil pupil-lg" id="pp2" style="transform:translate(0,0)"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Black -->
+                <div class="char-black" id="blk">
+                    <div class="black-eyes" id="blkEyes">
+                        <div class="eye-white" id="be1">
+                            <div class="pupil pupil-sm" id="bp1"></div>
+                        </div>
+                        <div class="eye-white" id="be2">
+                            <div class="pupil pupil-sm" id="bp2"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Orange -->
+                <div class="char-orange" id="orng">
+                    <div class="orange-eyes" id="orngEyes">
+                        <div class="pupil pupil-xs"></div>
+                        <div class="pupil pupil-xs"></div>
+                    </div>
+                </div>
+                <!-- Yellow -->
+                <div class="char-yellow" id="yell">
+                    <div class="yellow-eyes" id="yellEyes">
+                        <div class="pupil pupil-xs"></div>
+                        <div class="pupil pupil-xs"></div>
+                    </div>
+                    <div class="yellow-mouth" id="yellMouth"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-panel">
+            <div class="login-card">
+                <h1>Welcome back!</h1>
+                <p>Please enter your details</p>
+                {% if error %}<div class="alert-msg" id="alertMsg">{{ error }}</div>{% endif %}
+                <form method="post" id="loginForm">
+                    <div class="input-wrap">
+                        <label>Username</label>
+                        <input type="text" name="username" id="username" placeholder="Enter your username" required
+                            autofocus>
+                    </div>
+                    <div class="input-wrap">
+                        <label>Password</label>
+                        <input type="password" name="password" id="password" placeholder="••••••••" required>
+                        <span class="pwd-toggle" id="togglePwd" title="显示密码">👁</span>
+                    </div>
+                    <div class="extra-row">
+                        <label><input type="checkbox" id="rememberMe" style="accent-color:#3b82f6"> 记住密码</label>
+                        <a href="#" onclick="alert('请联系管理员重置密码')">忘记密码?</a>
+                    </div>
+                    <button type="submit" class="btn-login" id="loginBtn">Log in</button>
+                </form>
+                <div class="text-center mt-3" style="font-size:13px;color:#94a3b8">没有账号？<a href="/register"
+                        style="color:#6366f1;text-decoration:none">注册</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var mx = 0, my = 0;
+            document.addEventListener('mousemove', function (e) { mx = e.clientX; my = e.clientY });
+
+            // Pupil tracking
+            function track(pupilEl, eyeEl, maxDist) {
+                var r = eyeEl.getBoundingClientRect();
+                var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+                var dx = mx - cx, dy = my - cy;
+                var dist = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist || 6);
+                var a = Math.atan2(dy, dx);
+                pupilEl.style.transform = 'translate(' + (Math.cos(a) * dist) + 'px,' + (Math.sin(a) * dist) + 'px)';
+            }
+            // Get all pupils with their eye containers
+            var pupils = [
+                { p: document.getElementById('pp1'), e: document.getElementById('pe1'), m: 5 },
+                { p: document.getElementById('pp2'), e: document.getElementById('pe2'), m: 5 },
+                { p: document.getElementById('bp1'), e: document.getElementById('be1'), m: 4 },
+                { p: document.getElementById('bp2'), e: document.getElementById('be2'), m: 4 },
+            ];
+            // For orange/yellow, pupils are direct children of eyes container
+            var orngPupils = document.querySelectorAll('.orange-eyes .pupil');
+            var yellPupils = document.querySelectorAll('.yellow-eyes .pupil');
+            var orngEyes = document.getElementById('orngEyes');
+            var yellEyes = document.getElementById('yellEyes');
+
+            setInterval(function () {
+                pupils.forEach(function (x) { track(x.p, x.e, x.m) });
+                var or = orngEyes.getBoundingClientRect();
+                var cx = or.left + or.width / 2, cy = or.top + or.height / 2;
+                var dx = mx - cx, dy = my - cy;
+                var d = Math.min(Math.sqrt(dx * dx + dy * dy), 5);
+                var a = Math.atan2(dy, dx);
+                orngPupils.forEach(function (p) { p.style.transform = 'translate(' + (Math.cos(a) * d) + 'px,' + (Math.sin(a) * d) + 'px)' });
+
+                var yr = yellEyes.getBoundingClientRect();
+                var cx2 = yr.left + yr.width / 2, cy2 = yr.top + yr.height / 2;
+                var dx2 = mx - cx2, dy2 = my - cy2;
+                var d2 = Math.min(Math.sqrt(dx2 * dx2 + dy2 * dy2), 5);
+                var a2 = Math.atan2(dy2, dx2);
+                yellPupils.forEach(function (p) { p.style.transform = 'translate(' + (Math.cos(a2) * d2) + 'px,' + (Math.sin(a2) * d2) + 'px)' });
+            }, 50);
+
+            // Blinking (purple & black have white eyes)
+            function blinkLoop(idArr, min, max) {
+                setTimeout(function () {
+                    idArr.forEach(function (id) { document.getElementById(id).classList.add('blink') });
+                    setTimeout(function () {
+                        idArr.forEach(function (id) { document.getElementById(id).classList.remove('blink') });
+                        blinkLoop(idArr, min, max);
+                    }, 150);
+                }, Math.random() * (max - min) + min);
+            }
+            blinkLoop(['pe1', 'pe2'], 3000, 7000);
+            blinkLoop(['be1', 'be2'], 3000, 7000);
+
+            // === Character animation on input ===
+            var purp = document.getElementById('purp'), purpEyes = document.getElementById('purpEyes');
+            var blk = document.getElementById('blk'), blkEyes = document.getElementById('blkEyes');
+            var orngE = document.getElementById('orngEyes'), yellE = document.getElementById('yellEyes'), yellM = document.getElementById('yellMouth');
+            var uname = document.getElementById('username'), pwd = document.getElementById('password');
+            var toggle = document.getElementById('togglePwd');
+            var showPwd = false;
+
+            function updateChars() {
+                var typing = (document.activeElement === uname || document.activeElement === pwd);
+                var hasPwd = pwd.value.length > 0;
+                var hiding = hasPwd && !showPwd;
+
+                // Purple: typing or hiding password → stretch and lean
+                purp.classList.toggle('typing', typing || hiding);
+                purp.classList.toggle('showing', hasPwd && showPwd);
+                purpEyes.classList.toggle('typing', typing && !hasPwd);
+                purpEyes.classList.toggle('showing', hasPwd && showPwd);
+
+                // Black
+                blk.classList.toggle('typing', typing || hiding);
+                blk.classList.toggle('looking', typing && !hasPwd);
+                blkEyes.classList.toggle('typing', typing && !hasPwd);
+
+                // Orange/Yellow: show password → look away
+                orngE.classList.toggle('showing', hasPwd && showPwd);
+                yellE.classList.toggle('showing', hasPwd && showPwd);
+                yellM.classList.toggle('showing', hasPwd && showPwd);
+            }
+
+            uname.addEventListener('focus', updateChars); uname.addEventListener('blur', updateChars);
+            pwd.addEventListener('focus', updateChars); pwd.addEventListener('blur', updateChars);
+            pwd.addEventListener('input', updateChars);
+
+            // Password toggle
+            toggle.addEventListener('click', function () {
+                showPwd = !showPwd;
+                pwd.type = showPwd ? 'text' : 'password';
+                toggle.textContent = showPwd ? '🙈' : '👁';
+                updateChars();
+            });
+
+            // Purple random peeking when password is hidden
+            var peekTimer;
+            function schedulePeek() {
+                if (pwd.value.length > 0 && !showPwd) {
+                    peekTimer = setTimeout(function () {
+                        purpEyes.classList.add('peeking');
+                        setTimeout(function () {
+                            purpEyes.classList.remove('peeking');
+                            schedulePeek();
+                        }, 800);
+                    }, Math.random() * 3000 + 2000);
+                }
+            }
+            pwd.addEventListener('input', function () { clearTimeout(peekTimer); schedulePeek() });
+            schedulePeek();
+
+            // Hover login button
+            var lb = document.getElementById('loginBtn');
+            lb.addEventListener('mouseenter', function () { purp.classList.add('typing'); blk.classList.add('looking') });
+            lb.addEventListener('mouseleave', function () { if (document.activeElement !== uname && document.activeElement !== pwd) { purp.classList.remove('typing'); blk.classList.remove('looking') } });
+
+            // Remember-me
+            var rm = document.getElementById('rememberMe'), lf = document.getElementById('loginForm');
+            if (localStorage.getItem('rpa_remember') === '1') {
+                rm.checked = true;
+                uname.value = localStorage.getItem('rpa_user') || '';
+                pwd.value = localStorage.getItem('rpa_pwd') || '';
+                if (uname.value && pwd.value && !sessionStorage.getItem('auto_tried')) { sessionStorage.setItem('auto_tried', '1'); setTimeout(function () { lf.submit() }, 1500); }
+            }
+            lf.addEventListener('submit', function () {
+                if (rm.checked) { localStorage.setItem('rpa_remember', '1'); localStorage.setItem('rpa_user', uname.value); localStorage.setItem('rpa_pwd', pwd.value) }
+                else { localStorage.removeItem('rpa_remember'); localStorage.removeItem('rpa_user'); localStorage.removeItem('rpa_pwd') }
+            });
+
+            updateChars();
+        })();
+    </script>
+</body>
+
+</html>

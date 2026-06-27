@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block title %}SQL巡检 - RPA Admin{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-shield-check"></i> SQL巡检</h4>
+    <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#sqlModal" onclick="clearForm()">
+        <i class="bi bi-plus-lg"></i> 新增监控SQL
+    </button>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header fw-bold">监控SQL模板</div>
+            <div class="list-group list-group-flush" style="max-height:500px;overflow:auto">
+                {% for t in templates %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1 me-2">
+                            <div class="fw-bold">
+                                {{ t.name }}
+                                {% if t.severity == 'P0' %}<span class="badge bg-danger">P0</span>
+                                {% elif t.severity == 'P1' %}<span class="badge bg-warning">P1</span>
+                                {% else %}<span class="badge bg-secondary">P2</span>{% endif %}
+                                {% if not t.is_active %}<span class="badge bg-secondary">停用</span>{% endif %}
+                            </div>
+                            <small class="text-muted">{{ t.description or '' }}</small>
+                            <div class="mt-1 small text-muted">
+                                <i class="bi bi-person"></i> {{ t.responsible_person or 'admin' }}
+                            </div>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-success btn-sm" onclick="runSQL({{ t.id }})" title="立即执行"><i
+                                    class="bi bi-play-fill"></i></button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="editTemplateById({{ t.id }})"
+                                title="编辑"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="delTemplate({{ t.id }})"
+                                title="删除"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="list-group-item text-center text-muted py-4">暂无监控SQL</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card mb-3">
+            <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                执行结果 <span id="execStatus" class="small"></span>
+            </div>
+            <div class="card-body p-0" id="resultArea">
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-arrow-left-circle" style="font-size:32px"></i>
+                    <p class="mt-2">点击左侧 ▶ 按钮执行监控SQL</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header fw-bold d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span>告警记录</span>
+                    <input type="date" class="form-control form-control-sm" style="width:135px" value="{{ date_from }}"
+                        placeholder="日期从" onchange="filterAlerts()" id="fDateFrom">
+                    <span class="text-muted small">至</span>
+                    <input type="date" class="form-control form-control-sm" style="width:135px" value="{{ date_to }}"
+                        placeholder="日期至" onchange="filterAlerts()" id="fDateTo">
+                    <input type="text" class="form-control form-control-sm" style="width:120px"
+                        value="{{ search_name }}" placeholder="告警名称" onkeydown="if(event.key==='Enter')filterAlerts()"
+                        id="fName">
+                    <input type="text" class="form-control form-control-sm" style="width:100px"
+                        value="{{ search_person }}" placeholder="负责人" onkeydown="if(event.key==='Enter')filterAlerts()"
+                        id="fPerson">
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <a href="?alert_status="
+                        class="btn btn-sm {{ 'btn-dark' if not status_filter else 'btn-outline-secondary' }}">全部</a>
+                    <a href="?alert_status=pending"
+                        class="btn btn-sm {{ 'btn-warning' if status_filter=='pending' else 'btn-outline-warning' }}">待处理</a>
+                    <a href="?alert_status=resolved"
+                        class="btn btn-sm {{ 'btn-success' if status_filter=='resolved' else 'btn-outline-success' }}">已处理</a>
+                    <a href="?alert_status=ignored"
+                        class="btn btn-sm {{ 'btn-secondary' if status_filter=='ignored' else 'btn-outline-secondary' }}">无需处理</a>
+                </div>
+            </div>
+            <div class="table-responsive" style="max-height:400px;overflow:auto">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>监控名称</th>
+                            <th>执行时间</th>
+                            <th>异常数</th>
+                            <th>负责人</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in results %}
+                        <tr>
+                            <td class="small">{{ r.template_name }}</td>
+                            <td class="small">{{ r.executed_at.strftime('%m-%d %H:%M') if r.executed_at else '-' }}</td>
+                            <td>
+                                {% if r.exec_status == 'WARN' %}<span class="badge bg-warning">{{ r.total_rows }}</span>
+                                {% elif r.exec_status == 'FAILED' %}<span class="badge bg-danger">失败</span>
+                                {% else %}<span class="badge bg-success">0</span>{% endif %}
+                            </td>
+                            <td class="small">{{ r.responsible_person or 'admin' }}</td>
+                            <td>
+                                {% if r.alert_status == 'pending' %}<span class="badge bg-warning">待处理</span>
+                                {% elif r.alert_status == 'resolved' %}<span class="badge bg-success">已处理</span>
+                                {% else %}<span class="badge bg-secondary">无需处理</span>{% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="editAlertById({{ r.id }})"
+                                    title="编辑处理"><i class="bi bi-pencil"></i></button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-3">暂无告警记录</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if total_pages > 1 %}
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        {% for p in range(1, total_pages+1) %}
+                        <li class="page-item {{ 'active' if p==page else '' }}">
+                            <a class="page-link" href="?alert_status={{ status_filter }}&page={{ p }}">{{ p }}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="sqlModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sqlModalTitle">新增监控SQL</h5><button type="button" class="btn-close"
+                    data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="tmplId">
+                <div class="row g-2 mb-2">
+                    <div class="col-4"><label class="form-label">名称 <span class="text-danger">*</span></label><input
+                            class="form-control" id="tmplName"></div>
+                    <div class="col-2"><label class="form-label">严重程度</label><select class="form-select"
+                            id="tmplSeverity">
+                            <option value="P1">P1</option>
+                            <option value="P0">P0</option>
+                            <option value="P2">P2</option>
+                        </select></div>
+                    <div class="col-3"><label class="form-label">负责人</label><input class="form-control" id="tmplPerson"
+                            placeholder="如: YourName"></div>
+                    <div class="col-3"><label class="form-label">Cron</label><input class="form-control" id="tmplCron"
+                            placeholder="0 9 * * *"></div>
+                </div>
+                <div class="mb-2"><label class="form-label">描述</label><input class="form-control" id="tmplDesc"></div>
+                <div class="mb-2"><label class="form-label">SQL</label><textarea class="form-control sql-editor"
+                        id="tmplSQL"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button
+                    class="btn btn-dark" onclick="saveTemplate()">保存</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="alertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">告警处理</h5><button type="button" class="btn-close"
+                    data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="alertId">
+                <div class="mb-2"><label class="form-label">告警分类</label>
+                    <select class="form-select" id="alertCategory">
+                        <option value="">-- 请选择 --</option>
+                        <option value="亚马逊登录失败">亚马逊登录失败</option>
+                        <option value="访问异常">访问异常</option>
+                        <option value="程序异常">程序异常</option>
+                        <option value="网络异常">网络异常</option>
+                        <option value="账号无数据">账号无数据</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="mb-2"><label class="form-label">错误原因</label><textarea class="form-control" id="alertReason"
+                        rows="2"></textarea></div>
+                <div class="mb-2"><label class="form-label">解决方案</label><textarea class="form-control"
+                        id="alertSolution" rows="2"></textarea></div>
+                <div class="mb-2" id="aiResultBox" style="display:none">
+                    <label class="form-label">🤖 AI分析结果</label>
+                    <div class="card bg-light">
+                        <div class="card-body py-2 small" id="aiResultContent"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-info btn-sm me-auto" onclick="runAIAnalysis()" id="btnAI">🤖
+                    AI分析</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button class="btn btn-dark" onclick="saveAlert()">标记已处理</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+    var API = '/rpa/api';
+    function filterAlerts() {
+        var p = new URLSearchParams();
+        p.set('alert_status', '{{ status_filter }}');
+        p.set('date_from', document.getElementById('fDateFrom').value);
+        p.set('date_to', document.getElementById('fDateTo').value);
+        p.set('search_name', document.getElementById('fName').value);
+        p.set('search_person', document.getElementById('fPerson').value);
+        location.href = '?' + p.toString();
+    }
+    function runSQL(id) {
+        const area = document.getElementById('resultArea');
+        area.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> 执行中...</div>';
+        fetch(API + '/monitor/execute/' + id, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                const badge = d.status === 'SUCCESS' ? 'success' : d.status === 'WARN' ? 'warning' : 'danger';
+                document.getElementById('execStatus').innerHTML = '<span class="badge bg-' + badge + '">' + d.message + '</span>';
+                let html = '<div class="p-3"><div class="alert alert-' + badge + ' py-2 mb-2">' + d.message + '</div>';
+                if (d.preview && d.preview.length) {
+                    html += '<div class="preview-table"><table class="table table-sm table-bordered"><thead><tr>';
+                    Object.keys(d.preview[0]).forEach(k => html += '<th>' + k + '</th>');
+                    html += '</tr></thead><tbody>';
+                    d.preview.forEach(r => { html += '<tr>'; Object.values(r).forEach(v => html += '<td>' + (v === null ? '<span class="text-muted">-</span>' : v) + '</td>'); html += '</tr>'; });
+                    html += '</tbody></table></div>';
+                }
+                html += '</div>'; area.innerHTML = html;
+                if (d.status === 'WARN') showToast('发现 ' + d.total_rows + ' 条异常', 'warning');
+            }).catch(err => { area.innerHTML = '<div class="alert alert-danger m-3">执行失败: ' + err.message + '</div>'; });
+    }
+
+    function clearForm() {
+        document.getElementById('tmplId').value = '';
+        document.getElementById('sqlModalTitle').textContent = '新增监控SQL';
+        ['tmplName', 'tmplDesc', 'tmplSQL', 'tmplCron', 'tmplPerson'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    function editTemplateById(id) {
+        fetch(API + '/monitor/template/' + id + '/data')
+            .then(r => r.json())
+            .then(t => {
+                document.getElementById('tmplId').value = t.id;
+                document.getElementById('sqlModalTitle').textContent = '编辑: ' + t.name;
+                document.getElementById('tmplName').value = t.name;
+                document.getElementById('tmplDesc').value = t.description || '';
+                document.getElementById('tmplSQL').value = t.sql_text;
+                document.getElementById('tmplCron').value = t.schedule_cron || '';
+                document.getElementById('tmplPerson').value = t.responsible_person || 'admin';
+                document.getElementById('tmplSeverity').value = t.severity;
+                new bootstrap.Modal(document.getElementById('sqlModal')).show();
+            }).catch(err => showToast('获取模板失败: ' + err.message, 'error'));
+    }
+
+    function editAlertById(id) {
+        fetch(API + '/monitor/alert/' + id + '/data')
+            .then(r => r.json())
+            .then(r => {
+                document.getElementById('alertId').value = r.id;
+                document.getElementById('alertCategory').value = r.alert_category || '';
+                document.getElementById('alertReason').value = r.error_reason || '';
+                document.getElementById('alertSolution').value = r.solution || '';
+                new bootstrap.Modal(document.getElementById('alertModal')).show();
+            }).catch(err => showToast('获取告警失败: ' + err.message, 'error'));
+    }
+
+    function runAIAnalysis() {
+        const btn = document.getElementById('btnAI');
+        btn.disabled = true; btn.textContent = '⏳ 分析中...';
+        fetch(API + '/monitor/ai_analyze', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                alert_id: document.getElementById('alertId').value,
+                exception_type: document.getElementById('alertCategory').value || '未知异常',
+                error_message: document.getElementById('alertReason').value || '未填写错误原因'
+            })
+        })
+            .then(r => r.json()).then(d => {
+                document.getElementById('aiResultBox').style.display = 'block';
+                if (d.success) {
+                    document.getElementById('aiResultContent').innerHTML =
+                        '<div><strong>根因:</strong> ' + d.root_cause + '</div>' +
+                        '<div class=mt-1><strong>方案:</strong> ' + d.suggestion + '</div>' +
+                        '<div class=mt-1><strong>影响:</strong> ' + d.business_impact + '</div>' +
+                        '<div class=\"mt-1 text-info\"><strong>通报:</strong> ' + d.notification + '</div>';
+                    document.getElementById('alertReason').value = d.root_cause || '';
+                    document.getElementById('alertSolution').value = d.suggestion || '';
+                } else {
+                    document.getElementById('aiResultContent').innerHTML = '<span class=text-danger>' + d.error + '</span>';
+                }
+                btn.disabled = false; btn.textContent = '🤖 AI分析';
+            }).catch(e => {
+                document.getElementById('aiResultBox').style.display = 'block';
+                document.getElementById('aiResultContent').innerHTML = '<span class=text-danger>请求失败: ' + e.message + '</span>';
+                btn.disabled = false; btn.textContent = '🤖 AI分析';
+            });
+    }
+
+    function saveAlert() {
+        const data = {
+            alert_status: 'resolved',
+            alert_category: document.getElementById('alertCategory').value,
+            error_reason: document.getElementById('alertReason').value,
+            solution: document.getElementById('alertSolution').value,
+        };
+        fetch(API + '/monitor/alert/' + document.getElementById('alertId').value,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+            .then(r => r.json()).then(d => { if (d.success) { showToast('已处理'); location.reload(); } else showToast(d.error, 'error'); });
+    }
+
+    function saveTemplate() {
+        const data = {
+            id: document.getElementById('tmplId').value || null, name: document.getElementById('tmplName').value,
+            description: document.getElementById('tmplDesc').value, sql_text: document.getElementById('tmplSQL').value,
+            severity: document.getElementById('tmplSeverity').value, schedule_cron: document.getElementById('tmplCron').value,
+            responsible_person: document.getElementById('tmplPerson').value || 'admin'
+        };
+        if (!data.name || !data.sql_text) return showToast('名称和SQL不能为空', 'error');
+        fetch(API + '/monitor/template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+            .then(r => r.json()).then(d => { if (d.success) { showToast('保存成功'); location.reload(); } else showToast(d.error, 'error'); });
+    }
+
+    function delTemplate(id) { if (confirm('确定删除？')) fetch(API + '/monitor/template/' + id, { method: 'DELETE' }).then(r => r.json()).then(d => { if (d.success) { showToast('已删除'); location.reload(); } }); }
+
+    function editAlert(r) {
+        document.getElementById('alertId').value = r.id;
+        document.getElementById('alertCategory').value = r.alert_category || '';
+        document.getElementById('alertReason').value = r.error_reason || '';
+        document.getElementById('alertSolution').value = r.solution || '';
+        new bootstrap.Modal(document.getElementById('alertModal')).show();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+{% block title %}消息收件箱 — 智能客服{% endblock %}
+{% block page_title %}💬 智能客服 — 消息收件箱{% endblock %}
+
+{% block extra_head %}
+<style>
+    .inbox-wrapper {
+        display: flex;
+        height: calc(100vh - 140px);
+        gap: 0;
+    }
+
+    .inbox-left {
+        width: 340px;
+        min-width: 340px;
+        background: #fff;
+        border-right: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .inbox-right {
+        flex: 1;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .filter-bar {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+    }
+
+    .filter-bar .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+
+    .filter-bar .form-select-sm,
+    .filter-bar .form-control-sm {
+        font-size: 12px;
+        padding: 2px 8px;
+        height: 28px;
+    }
+
+    .msg-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .msg-item {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: background 0.12s;
+        border-left: 3px solid transparent;
+    }
+
+    .msg-item:hover {
+        background: #f8fafc;
+    }
+
+    .msg-item.active {
+        background: #eff6ff;
+        border-left-color: #3b82f6;
+    }
+
+    .msg-item .msg-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+
+    .msg-item .customer {
+        font-weight: 600;
+        font-size: 13px;
+        color: #1e293b;
+    }
+
+    .msg-item .platform-badge {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .msg-item .time {
+        font-size: 11px;
+        color: #94a3b8;
+    }
+
+    .msg-item .subject {
+        font-size: 11px;
+        color: #64748b;
+        margin-bottom: 3px;
+    }
+
+    .msg-item .preview {
+        font-size: 12px;
+        color: #94a3b8;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .msg-item .badge-row {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+    }
+
+    .badge-priority-urgent {
+        background: #fef2f2;
+        color: #dc2626;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+    }
+
+    .badge-priority-normal {
+        background: #fffbeb;
+        color: #d97706;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+    }
+
+    .badge-priority-low {
+        background: #f0fdf4;
+        color: #16a34a;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+    }
+
+    .badge-status {
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+    }
+
+    .badge-pending {
+        background: #e0f2fe;
+        color: #0284c7;
+    }
+
+    .badge-replied {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .badge-closed {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .badge-spam {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .msg-detail-header {
+        padding: 16px 20px;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .msg-detail-header .meta-row {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 8px;
+    }
+
+    .msg-detail-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 20px;
+    }
+
+    .msg-detail-content .card-box {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 12px;
+    }
+
+    .msg-detail-content .card-box .label {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-bottom: 4px;
+    }
+
+    .msg-detail-content .card-box .value {
+        font-size: 13px;
+        color: #1e293b;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .reply-area {
+        padding: 12px 20px;
+        border-top: 1px solid #e2e8f0;
+        background: #fff;
+    }
+
+    .reply-area textarea {
+        width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 13px;
+        resize: vertical;
+        min-height: 80px;
+        outline: none;
+    }
+
+    .reply-area textarea:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+    }
+
+    .reply-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+    }
+
+    .pagination-bar {
+        padding: 8px 14px;
+        border-top: 1px solid #e2e8f0;
+        background: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #94a3b8;
+    }
+
+    .loading-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+    }
+
+    .conv-item {
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .conv-reply {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .conv-reply-ai {
+        background: #fef3c7;
+        color: #92400e;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inbox-wrapper">
+    <!-- 左栏：筛选 + 消息列表 -->
+    <div class="inbox-left">
+        <div class="filter-bar">
+            <div class="filter-row">
+                <select class="form-select form-select-sm" id="filterPlatform" style="width:100px"
+                    onchange="loadMessages()">
+                    <option value="">全部平台</option>
+                    <option value="Amazon">Amazon</option>
+                    <option value="Walmart">Walmart</option>
+                    <option value="Shopee">Shopee</option>
+                    <option value="1688">1688</option>
+                </select>
+                <select class="form-select form-select-sm" id="filterStatus" style="width:95px"
+                    onchange="loadMessages()">
+                    <option value="">全部状态</option>
+                    <option value="pending">待处理</option>
+                    <option value="replied">已回复</option>
+                    <option value="closed">已关闭</option>
+                </select>
+                <select class="form-select form-select-sm" id="filterPriority" style="width:85px"
+                    onchange="loadMessages()">
+                    <option value="">全部优先级</option>
+                    <option value="urgent">🔴 紧急</option>
+                    <option value="normal">🟡 普通</option>
+                    <option value="low">🟢 低</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <select class="form-select form-select-sm" id="filterCategory" style="width:100px"
+                    onchange="loadMessages()">
+                    <option value="">全部分类</option>
+                    <option value="return">退货退款</option>
+                    <option value="logistics">物流查询</option>
+                    <option value="inquiry">产品咨询</option>
+                    <option value="complaint">投诉</option>
+                    <option value="other">其他</option>
+                </select>
+                <input type="text" class="form-control form-control-sm" id="filterSearch" placeholder="🔍 搜索..."
+                    style="width:140px" onkeydown="if(event.key==='Enter')loadMessages()">
+                <button class="btn btn-outline-secondary btn-sm" onclick="loadMessages()"
+                    style="height:28px;font-size:12px">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+            </div>
+        </div>
+        <div class="msg-list" id="msgList">
+            <div class="loading-spinner"><span
+                    class="spinner-border spinner-border-sm text-secondary me-2"></span>加载中...</div>
+        </div>
+        <div class="pagination-bar">
+            <span id="pageInfo">共 0 条</span>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btn-sm" onclick="prevPage()" id="btnPrev">&laquo;</button>
+                <span style="padding:2px 8px;font-size:12px" id="pageNum">1/1</span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="nextPage()" id="btnNext">&raquo;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右栏：消息详情 + 回复 -->
+    <div class="inbox-right" id="detailPanel">
+        <div class="empty-state">
+            <div style="font-size:48px;margin-bottom:12px">💬</div>
+            <p style="font-size:13px">选择左侧消息查看详情</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // ========== 状态变量 ==========
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentMessageId = null;
+
+    // ========== 优先级标签 ==========
+    function priorityBadge(p) {
+        const map = { urgent: 'badge-priority-urgent', normal: 'badge-priority-normal', low: 'badge-priority-low' };
+        const label = { urgent: '🔴 紧急', normal: '🟡 普通', low: '🟢 低' };
+        return `<span class="${map[p] || ''}">${label[p] || p}</span>`;
+    }
+    function statusBadge(s) {
+        const map = { pending: 'badge-pending', replied: 'badge-replied', closed: 'badge-closed', spam: 'badge-spam' };
+        const label = { pending: '待处理', replied: '已回复', closed: '已关闭', spam: '垃圾' };
+        return `<span class="badge-status ${map[s] || ''}">${label[s] || s}</span>`;
+    }
+    function categoryLabel(c) {
+        const map = { return: '退货退款', logistics: '物流查询', inquiry: '产品咨询', complaint: '投诉', other: '其他' };
+        return map[c] || c || '';
+    }
+
+    // ========== 加载消息列表 ==========
+    function loadMessages(page = 1) {
+        currentPage = page;
+        const params = new URLSearchParams();
+        params.set('page', page);
+        params.set('per_page', 20);
+        const p = document.getElementById('filterPlatform').value;
+        if (p) params.set('platform', p);
+        const s = document.getElementById('filterStatus').value;
+        if (s) params.set('status', s);
+        const pr = document.getElementById('filterPriority').value;
+        if (pr) params.set('priority', pr);
+        const c = document.getElementById('filterCategory').value;
+        if (c) params.set('category', c);
+        const q = document.getElementById('filterSearch').value.trim();
+        if (q) params.set('search', q);
+
+        fetch('/api/cs/messages?' + params.toString())
+            .then(r => r.json())
+            .then(d => {
+                if (!d.success) { showToast(d.error, 'error'); return; }
+                renderList(d.data);
+                totalPages = d.data.total_pages;
+                document.getElementById('pageInfo').textContent = `共 ${d.data.total} 条`;
+                document.getElementById('pageNum').textContent = `${page}/${totalPages}`;
+                document.getElementById('btnPrev').disabled = page <= 1;
+                document.getElementById('btnNext').disabled = page >= totalPages;
+            })
+            .catch(e => showToast('加载失败: ' + e.message, 'error'));
+    }
+
+    function prevPage() { if (currentPage > 1) loadMessages(currentPage - 1); }
+    function nextPage() { if (currentPage < totalPages) loadMessages(currentPage + 1); }
+
+    function renderList(data) {
+        const list = document.getElementById('msgList');
+        if (data.records.length === 0) {
+            list.innerHTML = '<div class="empty-state" style="padding:40px"><p style="font-size:13px">暂无消息</p></div>';
+            return;
+        }
+        list.innerHTML = data.records.map(msg => {
+            const isActive = msg.id === currentMessageId ? ' active' : '';
+            const time = msg.received_at ? msg.received_at.substring(11, 16) : '';
+            const preview = (msg.preview || msg.content || '').substring(0, 60);
+            return `
+            <div class="msg-item${isActive}" onclick="showDetail(${msg.id})" data-id="${msg.id}">
+                <div class="msg-header">
+                    <span class="customer">${escapeHtml(msg.customer_name || 'Unknown')}</span>
+                    <span class="time">${time}</span>
+                </div>
+                <div class="subject">${escapeHtml(msg.subject || '')}</div>
+                <div class="preview">${escapeHtml(preview)}</div>
+                <div class="badge-row">
+                    <span class="platform-badge">${escapeHtml(msg.platform)}</span>
+                    ${priorityBadge(msg.priority)}
+                    ${statusBadge(msg.status)}
+                    ${msg.category ? '<span style="font-size:10px;color:#64748b">' + categoryLabel(msg.category) + '</span>' : ''}
+                </div>
+            </div>`;
+        }).join('');
+
+        // 保持高亮
+        if (currentMessageId) {
+            const active = list.querySelector(`[data-id="${currentMessageId}"]`);
+            if (active) active.classList.add('active');
+        }
+    }
+
+    // ========== 消息详情 ==========
+    function showDetail(id) {
+        currentMessageId = id;
+        // 高亮
+        document.querySelectorAll('.msg-item').forEach(el => el.classList.remove('active'));
+        const item = document.querySelector(`[data-id="${id}"]`);
+        if (item) item.classList.add('active');
+
+        fetch('/api/cs/messages/' + id)
+            .then(r => r.json())
+            .then(d => {
+                if (!d.success) { showToast(d.error, 'error'); return; }
+                renderDetail(d.data);
+            })
+            .catch(e => showToast('加载失败: ' + e.message, 'error'));
+    }
+
+    function renderDetail(data) {
+        const msg = data.message;
+        const order = data.order_info || {};
+        const convs = data.conversations || [];
+        const productName = data.product_name || msg.asin || '未知产品';
+        const orderAmount = order.amount ? '$' + order.amount.toFixed(2) : '--';
+        const orderDate = order.order_date || '--';
+        const sentLabel = { positive: '😊 正面', neutral: '😐 中性', negative: '😟 负面', angry: '😡 愤怒' };
+        const sentiment = msg.sentiment ? (sentLabel[msg.sentiment] || msg.sentiment) : '未分析';
+
+        let conversationsHtml = '';
+        if (convs.length > 0) {
+            conversationsHtml = convs.map(c => {
+                const cls = c.reply_type === 'ai_generated' ? 'conv-reply-ai' : 'conv-reply';
+                const aiLabel = c.is_ai_assisted ? ' 💡AI辅助' : '';
+                const time = c.created_at ? c.created_at.substring(11, 16) : '';
+                return `<div class="conv-item ${cls}"><strong>客服回复</strong>${aiLabel} <small style="float:right">${time}</small><br>${escapeHtml(c.reply_content)}</div>`;
+            }).join('');
+        }
+
+        document.getElementById('detailPanel').innerHTML = `
+            <div class="msg-detail-header">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <h5 style="margin:0;font-size:15px">${escapeHtml(msg.subject || '无主题')}</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="markSpam(${msg.id})" title="标记垃圾">🚫 垃圾</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="closeSession(${msg.id})">关闭</button>
+                    </div>
+                </div>
+                <div class="meta-row">
+                    <span>客户: <strong>${escapeHtml(msg.customer_name || 'Unknown')}</strong></span>
+                    <span>平台: <strong>${escapeHtml(msg.platform)}</strong></span>
+                    <span>订单: <strong>${escapeHtml(msg.order_id || '--')}</strong></span>
+                    <span>时间: ${msg.received_at || '--'}</span>
+                    <span>${priorityBadge(msg.priority)}</span>
+                    <span>${statusBadge(msg.status)}</span>
+                    <span>分类: ${categoryLabel(msg.category)}</span>
+                    <span>情感: ${sentiment}</span>
+                    ${msg.ai_intent ? '<span>AI意图: ' + escapeHtml(msg.ai_intent) + '</span>' : ''}
+                </div>
+            </div>
+            <div class="msg-detail-content">
+                <div class="card-box">
+                    <div class="label">客户消息</div>
+                    <div class="value">${escapeHtml(msg.content)}</div>
+                </div>
+                <div class="card-box" style="background:#f8fafc">
+                    <div class="label">关联信息</div>
+                    <div style="font-size:12px;color:#64748b">
+                        产品: <strong>${escapeHtml(productName)}</strong> | 订单金额: <strong>${orderAmount}</strong> | 购买日期: <strong>${orderDate}</strong>
+                        ${data.related_count > 0 ? ' | 同订单历史消息: <strong>' + data.related_count + '条</strong>' : ''}
+                    </div>
+                </div>
+                ${conversationsHtml ? '<div class="label mb-2" style="margin-top:8px">对话历史</div>' + conversationsHtml : ''}
+            </div>
+            <div class="reply-area">
+                <textarea id="replyContent" placeholder="在此输入回复内容..."></textarea>
+                <div class="reply-actions">
+                    <select class="form-select form-select-sm" id="templateSelect" style="width:160px" onchange="insertTemplate()">
+                        <option value="">选择回复模板 ▼</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-primary" onclick="aiSuggest(${msg.id})">🤖 AI建议</button>
+                    <button class="btn btn-sm btn-primary" onclick="sendReply(${msg.id})">📨 发送</button>
+                </div>
+            </div>`;
+
+        // 加载模板下拉
+        loadTemplates();
+        // 滚动到底部
+        const content = document.querySelector('.msg-detail-content');
+        if (content) content.scrollTop = content.scrollHeight;
+    }
+
+    // ========== 模板下拉 ==========
+    let templatesCache = [];
+    function loadTemplates() {
+        fetch('/api/cs/templates')
+            .then(r => r.json())
+            .then(d => {
+                if (!d.success) return;
+                templatesCache = d.data.records || [];
+                const sel = document.getElementById('templateSelect');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">选择回复模板 ▼</option>' +
+                    templatesCache.map(t => `<option value="${t.id}">📝 ${escapeHtml(t.name)}</option>`).join('');
+            })
+            .catch(() => { });
+    }
+
+    function insertTemplate() {
+        const sel = document.getElementById('templateSelect');
+        const tid = sel.value;
+        if (!tid) return;
+        const tpl = templatesCache.find(t => t.id == tid);
+        if (!tpl) return;
+
+        // 基础变量替换
+        let content = tpl.content;
+        // 从当前详情页提取变量值
+        const customerEl = document.querySelector('.meta-row strong');
+        const customerName = customerEl ? customerEl.textContent : 'Valued Customer';
+        content = content.replace(/\{\{customer_name\}\}/g, customerName);
+        content = content.replace(/\{\{current_date\}\}/g, new Date().toISOString().split('T')[0]);
+        content = content.replace(/\{\{shop_name\}\}/g, 'EcomIQ');
+
+        document.getElementById('replyContent').value = content;
+        showToast('已插入模板: ' + tpl.name);
+    }
+
+    // ========== 发送回复 ==========
+    function sendReply(msgId) {
+        const content = document.getElementById('replyContent').value.trim();
+        if (!content) { showToast('请输入回复内容', 'warning'); return; }
+        const sel = document.getElementById('templateSelect');
+        const templateId = sel.value || null;
+        const replyType = templateId ? 'template' : 'manual';
+
+        fetch('/api/cs/messages/' + msgId + '/reply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, template_id: templateId, reply_type: replyType, is_ai_assisted: false })
+        })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    showToast('回复已发送');
+                    document.getElementById('replyContent').value = '';
+                    showDetail(msgId); // 刷新详情
+                    loadMessages(currentPage); // 刷新列表
+                } else {
+                    showToast(d.error, 'error');
+                }
+            })
+            .catch(e => showToast('发送失败: ' + e.message, 'error'));
+    }
+
+    // ========== AI 建议 ==========
+    function aiSuggest(msgId) {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = '🤖 分析中...';
+        showToast('AI 正在分析消息...', 'warning');
+
+        fetch('/api/cs/messages/' + msgId + '/ai-suggest')
+            .then(r => r.json())
+            .then(d => {
+                btn.disabled = false;
+                btn.textContent = '🤖 AI建议';
+                if (!d.success) { showToast(d.error, 'error'); return; }
+                const data = d.data;
+                // 填充回复内容
+                document.getElementById('replyContent').value = data.suggested_reply || '';
+                // 展示分析结果
+                const intentMap = { 'return': '退货退款', 'logistics': '物流查询', 'inquiry': '产品咨询', complaint: '投诉', other: '其他' };
+                const sentMap = { positive: '😊 正面', neutral: '😐 中性', negative: '😟 负面', angry: '😡 愤怒' };
+                showToast(
+                    `🤖 意图: ${intentMap[data.intent] || data.intent} | 情感: ${sentMap[data.sentiment] || data.sentiment} | ${data.issue || ''}`,
+                    'success'
+                );
+                // 刷新详情面板以显示 AI 分析结果
+                showDetail(msgId);
+            })
+            .catch(e => {
+                btn.disabled = false;
+                btn.textContent = '🤖 AI建议';
+                showToast('AI 分析失败: ' + e.message, 'error');
+            });
+    }
+
+    // ========== 关闭 / 垃圾标记 ==========
+    function closeSession(msgId) {
+        if (!confirm('确定关闭此会话吗？')) return;
+        fetch('/api/cs/messages/' + msgId + '/close', { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { showToast('会话已关闭'); loadMessages(currentPage); }
+                else showToast(d.error, 'error');
+            });
+    }
+    function markSpam(msgId) {
+        if (!confirm('确定标记为垃圾消息吗？')) return;
+        fetch('/api/cs/messages/' + msgId + '/spam', { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    showToast('已标记为垃圾');
+                    currentMessageId = null;
+                    loadMessages(currentPage);
+                    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><div style="font-size:48px;margin-bottom:12px">💬</div><p style="font-size:13px">选择左侧消息查看详情</p></div>';
+                } else showToast(d.error, 'error');
+            });
+    }
+
+    // ========== 工具函数 ==========
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
+    }
+
+    // ========== 初始化 ==========
+    loadMessages();
+</script>
+{% endblock %}

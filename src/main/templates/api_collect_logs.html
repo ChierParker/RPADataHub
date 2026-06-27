@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}API 执行记录 — EcomIQ-RPA{% endblock %}
+{% block page_title %}🔌 API 执行记录{% endblock %}
+{% block content %}
+<div class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5><i class="bi bi-journal-text"></i> API 调用日志</h5>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="filterPlatform" style="width:120px" onchange="loadLogs()">
+                <option value="">全部平台</option>
+                <option value="Amazon">Amazon</option>
+                <option value="Walmart">Walmart</option>
+                <option value="Shopee">Shopee</option>
+                <option value="1688">1688</option>
+                <option value="custom">自定义</option>
+            </select>
+            <select class="form-select form-select-sm" id="filterStatus" style="width:100px" onchange="loadLogs()">
+                <option value="">全部状态</option>
+                <option value="success">成功</option>
+                <option value="failed">失败</option>
+            </select>
+        </div>
+    </div>
+    <div id="logTable">
+        <div style="text-align:center;padding:40px;color:#94a3b8">加载中...</div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+    function loadLogs() {
+        var p = document.getElementById('filterPlatform').value;
+        var s = document.getElementById('filterStatus').value;
+        var params = new URLSearchParams();
+        if (p) params.set('platform', p);
+        if (s) params.set('status', s);
+        fetch('/rpa/api/api_collect/logs?' + params.toString())
+            .then(r => r.json()).then(d => {
+                var records = d.data ? d.data.records || [] : [];
+                var grid = document.getElementById('logTable');
+                if (!records.length) { grid.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">暂无 API 调用日志</div>'; return; }
+                grid.innerHTML = '<table class="table table-sm"><thead><tr><th>时间</th><th>平台</th><th>端点</th><th>HTTP状态</th><th>耗时</th><th>记录数</th><th>详情</th></tr></thead><tbody>' +
+                    records.map(function (r) {
+                        var statusCls = r.http_status >= 200 && r.http_status < 300 ? 'text-success' : 'text-danger';
+                        return '<tr><td style="font-size:12px">' + (r.created_at || '') + '</td><td>' + escapeHtml(r.platform || '') + '</td><td style="font-size:12px">' + escapeHtml(r.http_method || 'GET') + ' ' + escapeHtml((r.endpoint || '').substring(0, 60)) + '</td><td class="' + statusCls + '">' + (r.http_status || '--') + '</td><td>' + (r.duration_ms ? r.duration_ms + 'ms' : '--') + '</td><td>' + (r.record_count || 0) + '</td><td><button class="btn btn-outline-secondary btn-sm" onclick="showDetail(' + r.id + ')">查看</button></td></tr>';
+                    }).join('') + '</tbody></table>';
+            });
+    }
+    function showDetail(id) {
+        fetch('/rpa/api/api_collect/logs/' + id).then(r => r.json()).then(d => {
+            if (!d.success) { showToast(d.error, 'error'); return; }
+            var r = d.data;
+            var html = '<div style="max-height:500px;overflow-y:auto"><table class="table table-sm"><tbody>';
+            var fields = { task_uuid: '任务UUID', platform: '平台', endpoint: '端点', http_method: '方法', http_status: 'HTTP状态', record_count: '入库记录数', duration_ms: '耗时(ms)', response_size: '响应大小', error_message: '错误信息', created_at: '时间' };
+            for (var k in fields) {
+                var v = r[k] !== undefined && r[k] !== null ? r[k] : '--';
+                html += '<tr><th style="width:120px">' + fields[k] + '</th><td>' + escapeHtml(String(v)) + '</td></tr>';
+            }
+            html += '</tbody></table></div>';
+            var w = window.open('', '_blank', 'width=700,height=600');
+            w.document.write('<html><head><title>API 调用详情</title><link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet"></head><body class="p-3">' + html + '</body></html>');
+        });
+    }
+    function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"') }
+    loadLogs();
+</script>
+{% endblock %}

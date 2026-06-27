@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}调度队列 — ETL 任务{% endblock %}
+{% block page_title %}⚙️ ETL 任务 — 调度队列{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-hourglass-split"></i> 调度队列</h4>
+        <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()"><i class="bi bi-arrow-repeat"></i>
+            刷新</button>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="text-muted small">待处理任务</div>
+                    <h3 id="statPending">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="text-muted small">处理中</div>
+                    <h3 class="text-warning" id="statRunning">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="text-muted small">7天完成</div>
+                    <h3 class="text-success" id="statComplete">-</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header fw-bold">任务队列</div>
+        <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>UUID</th>
+                        <th>脚本名</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>执行机器</th>
+                    </tr>
+                </thead>
+                <tbody id="queueBody">
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-3">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+    var API = '/rpa/api';
+    function loadQueue() {
+        fetch(API + '/collection/summary?per_page=50').then(function (r) { return r.json() }).then(function (d) {
+            var pending = 0, running = 0, complete = 0, html = '';
+            (d.records || []).forEach(function (r) {
+                if (r.task_status === 'PENDING' || r.task_status === 'RUNNING' || r.task_status === 'SUCCESS') {
+                    if (r.task_status === 'PENDING') pending++;
+                    if (r.task_status === 'RUNNING') running++;
+                    if (r.task_status === 'SUCCESS') complete++;
+                    var b = r.task_status === 'SUCCESS' ? 'success' : r.task_status === 'FAILED' ? 'danger' : r.task_status === 'RUNNING' ? 'warning' : 'secondary';
+                    html += '<tr><td><code>' + r.task_uuid + '</code></td><td>' + r.script_name + '</td><td><span class="badge bg-' + b + '">' + r.task_status + '</span></td><td>' + r.create_time + '</td><td>' + r.executor_ip + '</td></tr>';
+                }
+            });
+            document.getElementById('queueBody').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted">暂无任务</td></tr>';
+            document.getElementById('statPending').textContent = pending;
+            document.getElementById('statRunning').textContent = running;
+            document.getElementById('statComplete').textContent = complete;
+        }).catch(function () { document.getElementById('queueBody').innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无数据</td></tr>'; });
+    }
+    loadQueue(); setInterval(loadQueue, 15000);
+</script>
+{% endblock %}

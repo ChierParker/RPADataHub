@@ -1,0 +1,50 @@
+# ============================================================
+# EcomIQ — 统一 Python 依赖清单
+# ============================================================
+# 安装: pip install -r requirements.txt
+# 清华镜像: pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# ============================================================
+
+# === Web 框架 ===
+flask>=3.0,<4.0
+flask-sock>=0.7
+simple-websocket>=1.0
+
+# === 生产 WSGI 服务器 ===
+waitress>=3.0,<4.0
+
+# === 数据库 ===
+pymysql>=1.0,<2.0
+pandas>=2.0,<3.0
+
+# === Redis 消息队列（可选）===
+redis>=5.0,<6.0
+
+# === 浏览器自动化 ===
+playwright>=1.40,<2.0
+
+# === HTTP 请求 ===
+requests>=2.28,<3.0
+
+# === 环境变量管理 ===
+python-dotenv>=1.0,<2.0
+
+# === Excel 支持 ===
+openpyxl>=3.1,<4.0
+
+# === YAML 配置解析 ===
+PyYAML>=6.0
+
+# ============================================================
+# === Windows 桌面自动化（可选）===
+# 仅在需要 WinAuto 功能时安装
+# ============================================================
+pywinauto>=0.6.8            # Win32/UIA 控件自动化
+uiautomation>=2.0.18       # 微软原生 UIA 封装
+pyautogui>=0.9.54           # 鼠标键盘模拟
+opencv-python>=4.8.0        # 图像识别
+Pillow>=10.0.0              # 图像处理
+paddlepaddle>=2.6.0         # PaddlePaddle 推理框架
+paddleocr>=2.7.0            # OCR 引擎
+pyperclip>=1.8.2            # 剪贴板操作
+psutil>=5.9.0               # 进程管理
