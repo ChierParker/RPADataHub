@@ -137,7 +137,7 @@ python src/main/app.py
 **全栈模式（含 Worker + Redis + FileWatcher）：**
 
 ```bash
-start_services.bat
+start_services.bat  (root directory)
 ```
 
 ---
@@ -187,8 +187,6 @@ start_services.bat
 src/main/                         # 🏠 EcomIQ-RPA Hub（本文档）
 ├── app.py                    # 主应用入口 (Flask + WebSocket)
 ├── generate_mock_data.py     # 模拟数据生成器
-├── start.bat                 # Hub Web 模式启动
-├── start_services.bat        # Hub 全栈模式启动
 ├── README.md                 # 本文档
 ├── templates/
 │   ├── base.html             # 统一布局 (侧边栏+顶栏+底栏)

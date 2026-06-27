@@ -167,7 +167,6 @@ RPADataHub/
 ├── mq/
 │   └── redis_broker.py          # Redis MQ 代理 (生产/消费 + DB降级)
 ├── .env.example                 # 环境变量模板
-├── start_all_services.bat       # Windows 一键启动脚本
 └── UNIVERSAL_DEV_STANDARDS.md   # 通用开发约束与架构准则
 ```
 
@@ -211,7 +210,6 @@ mysql -u root -p < sql/init_task_tables.sql
 ### 3. 启动服务
 
 ```bash
-start_all_services.bat           # Windows 一键启动
 python admin_server.py           # Admin -> http://localhost:5000
 python file_watcher.py           # 文件监听 + ETL
 python worker.py                 # 任务执行 Worker
@@ -533,12 +531,11 @@ python -m src.main.app
 **全栈模式（含 Worker + Redis + FileWatcher + Web）：**
 
 ```bash
-start_services.bat
+start_services.bat  (root directory)
 ```
 
 启动后访问 `http://localhost:5000`，通过左侧导航栏 → **RPADataHub** 进入所有功能。
 
-> **注意**：在大框架模式下，RPADataHub 的 `admin_server.py` 不再需要单独运行。所有功能通过 Blueprint 挂载在 `/rpa` 下。原有的 `start_all_services.bat` 已被 `start_services.bat` 取代。
 
 ### 安全加固 (EcomIQ v1.1)
 

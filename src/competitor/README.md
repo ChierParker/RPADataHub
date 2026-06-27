@@ -291,7 +291,7 @@ CompetitorWatch 已作为 **Flask Blueprint** 集成到 [EcomIQ-RPA](../../READM
 
 ```bash
 python -m src.main.app        # 纯 Web 模式
-start_services.bat   # 全栈模式
+start_services.bat   # 全栈模式 (root)
 ```
 
 启动后访问 `http://localhost:5000`，通过左侧导航栏 → **竞品分析** 进入。

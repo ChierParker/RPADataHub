@@ -169,7 +169,6 @@ EcomIQ/
     ├── main/                       # 🏠 EcomIQ Hub（统一入口）
     │   ├── app.py                  # 主应用入口
     │   ├── README.md
-    │   ├── start.bat / start_services.bat
     │   ├── templates/ / static/ / sql/
     │
     ├── rpa/                        # 📡 RPADataHub
