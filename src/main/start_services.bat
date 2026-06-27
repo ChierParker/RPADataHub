@@ -1,16 +1,16 @@
 @echo off
 title EcomIQ 全部服务
 chcp 65001 >nul
-cd /d %~dp0..
+cd /d "%~dp0..\.."
 set PYTHON=python
 
 echo ======================================
-echo   EcomIQ — 电商智能工具集 全栈启动
+echo   EcomIQ-RPA — 电商智能工具集 全栈启动
 echo ======================================
 echo.
 
 echo [1/4] 启动 EcomIQ Web 管理台...
-start "EcomIQ-Web" /min %PYTHON% -m EcomIQ.app
+start "EcomIQ-Web" /min %PYTHON% -m src.main.app
 timeout /t 3 /nobreak >nul
 
 echo [2/4] 启动 Redis 消息队列...
@@ -24,11 +24,11 @@ if exist "C:\Program Files\Redis\redis-server.exe" (
 timeout /t 2 /nobreak >nul
 
 echo [3/4] 启动 Worker 任务执行器...
-start "Worker" /min %PYTHON% RPADataHub\worker.py
+start "Worker" /min %PYTHON% src\rpa\worker.py
 timeout /t 2 /nobreak >nul
 
 echo [4/4] 启动 File Watcher 文件监控...
-start "FileWatcher" /min %PYTHON% RPADataHub\file_watcher.py
+start "FileWatcher" /min %PYTHON% src\rpa\file_watcher.py
 
 echo.
 echo ======================================
