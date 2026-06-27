@@ -1,42 +1,42 @@
 @echo off
-title EcomIQ 全部服务
+title EcomIQ Services
 chcp 65001 >nul
 cd /d "%~dp0..\.."
 set PYTHON=python
 
 echo ======================================
-echo   EcomIQ-RPA — 电商智能工具集 全栈启动
+echo   EcomIQ-RPA - Full Stack Startup
 echo ======================================
 echo.
 
-echo [1/4] 启动 EcomIQ Web 管理台...
+echo [1/4] Starting EcomIQ Web Server...
 start "EcomIQ-Web" /min %PYTHON% -m src.main.app
 timeout /t 3 /nobreak >nul
 
-echo [2/4] 启动 Redis 消息队列...
+echo [2/4] Starting Redis...
 if exist "C:\Program Files\Redis\redis-server.exe" (
     start "Redis" /min "C:\Program Files\Redis\redis-server.exe"
 ) else if exist "C:\Progra~1\Redis\redis-server.exe" (
     start "Redis" /min "C:\Progra~1\Redis\redis-server.exe"
 ) else (
-    echo   [WARN] Redis 未找到, MQ 降级为数据库轮询
+    echo   [WARN] Redis not found, fallback to DB polling
 )
 timeout /t 2 /nobreak >nul
 
-echo [3/4] 启动 Worker 任务执行器...
+echo [3/4] Starting Task Worker...
 start "Worker" /min %PYTHON% src\rpa\worker.py
 timeout /t 2 /nobreak >nul
 
-echo [4/4] 启动 File Watcher 文件监控...
+echo [4/4] Starting File Watcher...
 start "FileWatcher" /min %PYTHON% src\rpa\file_watcher.py
 
 echo.
 echo ======================================
-echo   服务启动完成！
-echo   Web 管理台: http://localhost:5000
-echo   账号: admin / RPA@admin2026
+echo   All services started!
+echo   Web:  http://localhost:5000
+echo   User: admin / RPAadmin2026
 echo ======================================
 echo.
-echo 关闭方式: 手动关闭各个终端窗口
-echo 或: taskkill /f /im redis-server.exe /im python.exe
+echo Stop: Close terminal windows or run:
+echo   taskkill /f /im redis-server.exe /im python.exe
 pause
