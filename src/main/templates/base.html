@@ -653,6 +653,14 @@
                     </li>
                 </ul>
 
+                <!-- AI 智能助手 -->
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/ai' %}active{% endif %}"
+                            href="{{ url_for('ai_assistant') }}"><i class="bi bi-robot"></i> AI 智能助手</a>
+                    </li>
+                </ul>
+
                 <div class="nav-section">系统管理</div>
                 <ul class="nav flex-column">
                     <li class="nav-item"><a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}"
