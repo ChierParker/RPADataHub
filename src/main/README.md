@@ -83,7 +83,7 @@ EcomIQ 是面向跨境电商的**统一运营管理平台**，整合了数据采
 | 📊 CompetitorWatch | `/competitor/*` | 竞品管理 · 竞价看板 · AI 报告 | 完整 |
 | 🎯 LeadScraper | `/leads/*` | 客户开发 · 关键词采集 · 开发信 | 完整 |
 | 🎬 VideoIQ | `/video/*` | AI 视频内容分析 | 占位 |
-| 🤖 AI Assistant | `/ai` | 智能对话助手 | 占位 |
+| 🤖 AI Assistant | `/ai` | 智能对话助手 · DeepSeek · 数据查询分析 | 完整 |
 | 🤖 YAML 执行器 | `/rpa/winauto` | 可视化 Windows 桌面自动化 | 新增 |
 
 ---
@@ -152,7 +152,7 @@ start_services.bat
 | `/login` | 统一登录 |
 | `/logout` | 登出 |
 | `/video/*` | VideoIQ (占位) |
-| `/ai` | AI 智能助手 (占位) |
+| `/ai` | AI 智能助手 · DeepSeek 对话 · 数据查询分析 |
 | `/settings` | 系统设置 |
 | `/api/change_password` | 修改密码 |
 | `/api/dashboard/summary` | 底部状态栏数据 |
@@ -194,7 +194,7 @@ src/main/                         # 🏠 EcomIQ-RPA Hub（本文档）
 │   ├── base.html             # 统一布局 (侧边栏+顶栏+底栏)
 │   ├── home.html             # 首页仪表盘
 │   ├── login.html            # 登录页
-│   ├── ai_assistant.html     # AI 助手 (占位)
+│   ├── ai_assistant.html     # AI 助手 (DeepSeek 对话 + 数据查询)
 │   ├── settings.html         # 系统设置
 │   └── video*.html           # VideoIQ (占位)
 ├── static/                   # 静态资源
