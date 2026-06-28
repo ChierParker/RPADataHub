@@ -36,6 +36,17 @@ except ImportError:
     _SHARED_AVAILABLE = False
 
 
+    # === shared.py 优先 ===
+    if _SHARED_AVAILABLE:
+        _db, _perm = create_shared_components(cfg.database.as_dict())
+        query, execute = _db.query, _db.execute
+        sha256, clean_json_records = _sha256, _clean_json
+        PAGE_PERMISSION_MAP, login_required = _PAGE_MAP, _perm.login_required
+        get_user_permissions = _perm.get_user_permissions
+    else:
+        pass  # 下方旧代码覆盖
+
+
 # ============================================================
 # 数据库工具（连接复用，减少开销）
 # ============================================================

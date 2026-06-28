@@ -124,12 +124,12 @@ def execute_task(task: dict, use_direct: bool = False):
 
 def main():
     use_db_only = "--db" in sys.argv
-    use_direct = "--direct" in sys.argv
+    use_direct = "--subprocess" not in sys.argv  # 默认 direct，--subprocess 回退
     show_help = "--help" in sys.argv or "-h" in sys.argv
 
-    # --direct 模式下包装 execute_task
+    # 默认 direct 模式，--subprocess 强制回退
     if use_direct:
-        logger.info("使用 --direct 模式（进程内调用）")
+        logger.info("使用 direct 模式（进程内调用，默认）")
         _orig_exec = execute_task
 
         def execute_task_direct(task):
@@ -139,11 +139,11 @@ def main():
         _exec_fn = execute_task
 
     if show_help:
-        print("RPA 执行器 Agent v2.1")
-        print("  python worker.py           Redis Streams MQ 模式（自动降级）")
-        print("  python worker.py --db     强制 DB 轮询模式")
-        print("  python worker.py --direct  进程内直接调用（推荐，无 subprocess 开销）")
-        print("  python worker.py --once   单次执行后退出（DB 模式）")
+        print("RPA 执行器 Agent v2.1 (默认 direct)")
+        print("  python worker.py              Redis+M direct 模式")
+        print("  python worker.py --db        强制 DB 轮询")
+        print("  python worker.py --subprocess 回退子进程模式（兼容）")
+        print("  python worker.py --once      单次执行后退出")
         return
 
     logger.info(f"RPA 执行器 Agent v2.0 启动 | IP={MACHINE_IP} | 采集目录={COLLECTION_DIR}")

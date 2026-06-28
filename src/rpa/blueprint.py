@@ -55,9 +55,16 @@ def create_rpa_data_hub_blueprint() -> Blueprint:
 
 
     # ============================================================
-    # 数据库工具（core/shared.py 迁移准备中）
-    # ============================================================
 
+    # === shared.py 优先（迁移完成即删除下方 else 分支）===
+    if _SHARED_AVAILABLE:
+        _db, _perm = create_shared_components(cfg.database.as_dict())
+        query, execute = _db.query, _db.execute
+        sha256, clean_json_records = _sha256, _clean_json
+        PAGE_PERMISSION_MAP, login_required = _PAGE_MAP, _perm.login_required
+        get_user_permissions = _perm.get_user_permissions
+    else:
+        pass  # 回退：用下方旧代码覆盖
 
     # ============================================================
     # 数据库工具
