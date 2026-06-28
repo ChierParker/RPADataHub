@@ -5,22 +5,6 @@
 <div class="card"><div class="card-body"><div class="table-responsive"><table class="table table-sm"><thead><tr><th>店铺</th>{% for i in range(7) %}<th class="text-center" style="width:60px">D-{{ 6-i }}</th>{% endfor %}<th>状态</th></tr></thead><tbody id="body"><tr><td colspan="9" class="text-center text-muted py-4">加载中...</td></tr></tbody></table></div></div></div>
 {% endblock %}
 {% block extra_scripts %}
-<script>
-fetch('/api/collection/health').then(r=>r.json()).then(d=>{
-  const days=[];for(let i=6;i>=0;i--){const dt=new Date(Date.now()-i*864e5);days.push(dt.toISOString().split('T')[0])}
-  const map={};d.records.forEach(r=>{const k=r.shop_name+'_'+r.dt;if(!map[k])map[k]={};map[k][r.collect_result]=(map[k][r.collect_result]||0)+r.cnt});
-  // 活跃店铺 + 有采集记录的店铺合并
-  const shops=[...new Set([{% for s in shops %}'{{ s }}',{% endfor %} ...d.records.map(r=>r.shop_name)])];
-  let h='';
-  shops.forEach(shop=>{
-    h+='<tr><td>'+shop+'</td>'; let failStreak=0;
-    days.forEach(dt=>{ const k=shop+'_'+dt; const r=map[k]||{}; const s=r['SUCCESS']||0; const f=r['FAILED']||0; const n=r['NO_DATA']||0;
-      let color=s>0?'#22c55e':f>0?'#ef4444':n>0?'#9ca3af':'#e5e7eb'; let tip=s>0?'成功 '+s:f>0?'失败':'无数据'; if(f>0)failStreak++; else failStreak=0;
-      h+=`<td class="text-center"><span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:${color}" title="${dt}: ${tip}"></span></td>`; });
-    let badge=failStreak>=3?'<span class="badge bg-danger">异常</span>':failStreak>0?'<span class="badge bg-warning">注意</span>':'<span class="badge bg-success">正常</span>';
-    h+='<td>'+badge+'</td></tr>';
-  });
-  document.getElementById('body').innerHTML=h||'<tr><td colspan="9" class="text-center text-muted">暂无数据</td></tr>';
-});
-</script>
+<script>window.__HEALTH_SHOPS__=[{% for s in shops %}'{{ s }}'{% if not loop.last %},{% endif %}{% endfor %}];</script>
+<script src="{{ url_for('rpa_data_hub.static', filename='js/collection_health.js') }}"></script>
 {% endblock %}

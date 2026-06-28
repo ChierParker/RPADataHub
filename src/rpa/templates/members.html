@@ -16,7 +16,7 @@
 </tr>{% endfor %}</tbody></table></div></div>
 {% endblock %}{% block extra_scripts %}<script>
 function updateRole(uid,rid){
-    fetch('/api/members/update_role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,role_id:parseInt(rid)})})
+    fetch('/rpa/api/members/update_role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid,role_id:parseInt(rid)})})
         .then(r=>r.json()).then(d=>{if(d.success)showToast('角色已更新')});
 }
 </script>{% endblock %}

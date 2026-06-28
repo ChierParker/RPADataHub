@@ -91,7 +91,10 @@
 </div>
 
 {% endblock %}
+
 {% block extra_scripts %}
+<script src="{{ url_for('rpa_data_hub.static', filename='js/shops.js') }}"></script>
+{% endblock %}
 <script>
 let currentPage = 1, shopSortCol = '', shopSortDir = 'desc';
 function sortShopBy(col) {
@@ -114,7 +117,7 @@ function loadShops(page) {
     if(p) qs += '&platform='+encodeURIComponent(p);
     if(st) qs += '&status='+st;
 
-    fetch('/api/shops/data?'+qs)
+    fetch('/rpa/api/shops/data?'+qs)
         .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
         .then(d => {
             // 更新平台下拉
@@ -156,7 +159,7 @@ function loadShops(page) {
 function showEdit(shopId) {
     document.getElementById('shopModalTitle').textContent = shopId ? '编辑店铺: '+shopId : '新增店铺';
     if (shopId) {
-        fetch('/api/shops/data?search='+encodeURIComponent(shopId))
+        fetch('/rpa/api/shops/data?search='+encodeURIComponent(shopId))
             .then(r => r.json())
             .then(d => {
                 let r = d.records.find(x => x.shop_id === shopId);
@@ -192,7 +195,7 @@ function saveShop() {
         status: parseInt(document.getElementById('eStatus').value),
     };
     if (!data.shop_id || !data.shop_name) return showToast('店铺ID和名称不能为空', 'error');
-    fetch('/api/shops/save', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+    fetch('/rpa/api/shops/save', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
         .then(r => r.json())
         .then(d => {
             if (d.success) { showToast('保存成功'); document.getElementById('shopModal').querySelector('.btn-close').click(); loadShops(1); }
@@ -208,7 +211,7 @@ function exportShops() {
     if(s) qs += '&search='+encodeURIComponent(s);
     if(p) qs += '&platform='+p;
     if(st) qs += '&status='+st;
-    window.open('/api/shops/export?'+qs, '_blank');
+    window.open('/rpa/api/shops/export?'+qs, '_blank');
 }
 
 loadShops(1);

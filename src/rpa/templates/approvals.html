@@ -30,7 +30,7 @@
 {% endblock %}{% block extra_scripts %}<script>
 function review(id,status){
     var comment=prompt(status=='approved'?'审批通过,可填写备注:':'拒绝原因:');
-    fetch('/api/approvals/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:id,status:status,comment:comment||''})})
+    fetch('/rpa/api/approvals/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request_id:id,status:status,comment:comment||''})})
         .then(r=>r.json()).then(d=>{if(d.success){showToast(status=='approved'?'已通过':'已拒绝');location.reload()}});
 }
 </script>{% endblock %}

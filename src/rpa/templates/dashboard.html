@@ -116,7 +116,7 @@
 function showDetail(traceId) {
     const modal = new bootstrap.Modal(document.getElementById('detailModal'));
     modal.show();
-    fetch('/api/etl_record/' + traceId)
+    fetch('/rpa/api/etl_record/' + traceId)
         .then(r => r.json())
         .then(data => {
             let html = '<h6>ETL记录</h6><table class="table table-sm"><tr><th>文件</th><td>'+(data.etl?.file_name||'-')+'</td></tr>'

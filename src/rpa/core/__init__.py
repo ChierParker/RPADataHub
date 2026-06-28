@@ -1,3 +1,5 @@
+# RPADataHub Core — shared infrastructure
+
 """
 核心模块
 对应白皮书四层架构中的 处理层 + 监控层

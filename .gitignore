@@ -52,12 +52,15 @@ temp/
 cache/
 
 # User / Session Data (may contain cookies & sensitive info)
+# ⚠️ 安全警告：如已提交到 Git，需执行 git rm --cached 清除历史
 profiles/
 sessions/
 cookies/
 browser/
 *.local.*
 *.private.*
+src/competitor/cookies/
+src/leads/profiles/
 
 # Database (runtime SQLite)
 *.db

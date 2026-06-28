@@ -91,7 +91,7 @@
 {% block extra_scripts %}
 <script>
 function editRouteById(id) {
-    fetch('/api/route/'+id+'/data')
+    fetch('/rpa/api/route/'+id+'/data')
         .then(r=>r.json())
         .then(r=>{
             document.getElementById('routeId').value=r.id;
@@ -132,14 +132,14 @@ function saveRoute() {
         is_active: document.getElementById('routeActive').checked ? 1 : 0,
     };
     if (!data.path_pattern || !data.target_ods_table) return showToast('文件夹路径和ODS表名不能为空', 'error');
-    fetch('/api/route', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+    fetch('/rpa/api/route', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
         .then(r => r.json())
         .then(d => { if(d.success) { showToast('保存成功'); location.reload(); } else showToast(d.error,'error'); });
 }
 
 function delRoute(id) {
     if (!confirm('确定删除此路由？删除后对应文件夹的文件将无法被消费。')) return;
-    fetch('/api/route/'+id, {method:'DELETE'})
+    fetch('/rpa/api/route/'+id, {method:'DELETE'})
         .then(r => r.json())
         .then(d => { if(d.success) { showToast('已删除'); location.reload(); } });
 }

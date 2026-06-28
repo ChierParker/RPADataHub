@@ -1,0 +1,100 @@
+version: "3.8"
+
+services:
+  # ============================================================
+  # MySQL 数据库
+  # ============================================================
+  mysql:
+    image: mysql:8.0
+    container_name: ecomiq-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-RPA@admin2026}
+      MYSQL_DATABASE: data
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./src/rpa/sql:/docker-entrypoint-initdb.d  # 自动初始化表结构
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Redis 消息队列（可选）
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ecomiq-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # EcomIQ-RPA Web 应用
+  # ============================================================
+  app:
+    build: .
+    container_name: ecomiq-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-RPA@admin2026}
+      - DB_NAME=data
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ECOMIQ_RPA_SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app_logs:/app/src/rpa/logs
+      - app_output:/app/src/rpa/output
+
+  # ============================================================
+  # RPA Worker 执行器
+  # ============================================================
+  worker:
+    build: .
+    container_name: ecomiq-worker
+    restart: unless-stopped
+    command: python src/rpa/worker.py --direct
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-RPA@admin2026}
+      - DB_NAME=data
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app_logs:/app/src/rpa/logs
+
+volumes:
+  mysql_data:
+  redis_data:
+  app_logs:
+  app_output:

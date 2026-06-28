@@ -16,13 +16,24 @@ import io
 import json
 import os
 import sys
-import threading
+import threading  # 待迁移到 core.shared.DatabasePool
 from datetime import datetime
 from functools import wraps
 
 import pandas as pd
 import pymysql
 from flask import Blueprint, render_template, request, session, jsonify, send_file, redirect, url_for
+
+# --- 共享工具（消除与 admin_server.py 的代码重复，逐步迁移至 core/shared.py）---
+try:
+    from core.shared import (
+        create_shared_components, clean_json_records as _clean_json, sha256 as _sha256,
+        api_ok, api_fail, PAGE_PERMISSION_MAP as _PAGE_MAP, parse_int_arg,
+    )
+    _SHARED_AVAILABLE = True
+except ImportError:
+    _SHARED_AVAILABLE = False
+
 
 
 def create_rpa_data_hub_blueprint() -> Blueprint:
@@ -41,6 +52,12 @@ def create_rpa_data_hub_blueprint() -> Blueprint:
     sys.path.insert(0, _module_dir)
     from config.settings import get_config
     cfg = get_config()
+
+
+    # ============================================================
+    # 数据库工具（core/shared.py 迁移准备中）
+    # ============================================================
+
 
     # ============================================================
     # 数据库工具
@@ -117,7 +134,6 @@ def create_rpa_data_hub_blueprint() -> Blueprint:
         perms = get_user_permissions() if "user" in session else []
         return {"user_permissions": perms, "page_map": PAGE_PERMISSION_MAP}
 
-    # ============================================================
     # 内置页面路由（用于 iframe 嵌入场景）
     # ============================================================
 

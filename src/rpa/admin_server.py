@@ -25,6 +25,17 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("RPA_FLASK_SECRET_KEY", os.urandom(24).hex()).encode()
 cfg = get_config()
 
+# --- 共享工具（消除与 blueprint.py 的代码重复，逐步迁移至 core/shared.py）---
+try:
+    from core.shared import (
+        create_shared_components, clean_json_records as _clean_json, sha256 as _sha256,
+        api_ok, api_fail, PAGE_PERMISSION_MAP as _PAGE_MAP, parse_int_arg,
+    )
+    _SHARED_AVAILABLE = True
+except ImportError:
+    _SHARED_AVAILABLE = False
+
+
 # ============================================================
 # 数据库工具（连接复用，减少开销）
 # ============================================================
